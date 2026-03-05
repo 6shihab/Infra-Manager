@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 interface User {
-    id: int;
+    id: number;
     email: string;
     full_name: string;
     is_superuser: boolean;
