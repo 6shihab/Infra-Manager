@@ -1,0 +1,55 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+from app import schemas, models
+from app.database import get_db
+
+router = APIRouter(prefix="/servers", tags=["servers"])
+
+@router.get("/", response_model=List[schemas.ServerResponse])
+def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    servers = db.query(models.Server).offset(skip).limit(limit).all()
+    return servers
+
+@router.post("/", response_model=schemas.ServerResponse)
+def create_server(server: schemas.ServerCreate, db: Session = Depends(get_db)):
+    # Verify project exists
+    project = db.query(models.Project).filter(models.Project.id == server.project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    db_server = models.Server(**server.model_dump())
+    db.add(db_server)
+    db.commit()
+    db.refresh(db_server)
+    return db_server
+
+@router.get("/{server_id}", response_model=schemas.ServerResponse)
+def read_server(server_id: int, db: Session = Depends(get_db)):
+    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    if db_server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+    return db_server
+
+@router.put("/{server_id}", response_model=schemas.ServerResponse)
+def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = Depends(get_db)):
+    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    if db_server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+        
+    update_data = server.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_server, key, value)
+        
+    db.commit()
+    db.refresh(db_server)
+    return db_server
+
+@router.delete("/{server_id}")
+def delete_server(server_id: int, db: Session = Depends(get_db)):
+    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    if db_server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+    db.delete(db_server)
+    db.commit()
+    return {"status": "deleted"}
