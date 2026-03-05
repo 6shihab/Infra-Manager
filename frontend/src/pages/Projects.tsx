@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Server, Database, Globe } from 'lucide-react';
 import api from '../utils/api';
 
@@ -11,8 +11,22 @@ const fallbackProjects = [
 ];
 
 export function Projects() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialQuery = searchParams.get('q') || '';
+
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState(initialQuery);
+    const [environmentFilter, setEnvironmentFilter] = useState('All Environments');
+
+    // Sync input with URL search params if they are passed from Navbar
+    useEffect(() => {
+        const query = searchParams.get('q');
+        if (query !== null) {
+            setSearchQuery(query);
+            setEnvironmentFilter('All Environments'); // Reset filter on new global search
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         // Attempt to fetch from backend
@@ -28,6 +42,22 @@ export function Projects() {
                 setLoading(false);
             });
     }, []);
+
+    const filteredProjects = useMemo(() => {
+        return projects.filter(project => {
+            // Environment Filter
+            const matchesEnv = environmentFilter === 'All Environments' || project.environment === environmentFilter;
+
+            // Search Query Filter
+            const query = searchQuery.toLowerCase();
+            const matchesSearch = !query ||
+                project.name.toLowerCase().includes(query) ||
+                (project.description && project.description.toLowerCase().includes(query)) ||
+                (project.primary_domain && project.primary_domain.toLowerCase().includes(query));
+
+            return matchesEnv && matchesSearch;
+        });
+    }, [projects, searchQuery, environmentFilter]);
 
     if (loading) {
         return (
@@ -58,64 +88,83 @@ export function Projects() {
                     </div>
                     <input
                         type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            // Optionally update URL as user types: setSearchParams({ q: e.target.value })
+                        }}
                         className="block w-full pl-10 pr-3 py-2 border border-dark-border rounded-lg leading-5 bg-black/20 text-gray-300 placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 sm:text-sm transition-all"
-                        placeholder="Search projects..."
+                        placeholder="Search projects by name, description, or domain..."
                     />
                 </div>
-                <select className="block w-40 pl-3 pr-10 py-2 text-base border-dark-border border bg-black/20 text-gray-300 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm rounded-lg appearance-none cursor-pointer">
+                <select
+                    value={environmentFilter}
+                    onChange={(e) => setEnvironmentFilter(e.target.value)}
+                    className="block w-40 pl-3 pr-10 py-2 text-base border-dark-border border bg-black/20 text-gray-300 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm rounded-lg appearance-none cursor-pointer"
+                >
                     <option>All Environments</option>
-                    <option>Production</option>
+                    <option>Prod</option>
                     <option>Staging</option>
-                    <option>Development</option>
+                    <option>Dev</option>
                 </select>
             </div>
 
             {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((project) => (
-                    <Link to={`/projects/${project.id}`} key={project.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden hover:border-brand-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-500/10">
-                        <div className="p-5 flex-1">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${project.environment === 'Prod' ? 'bg-indigo-500/10 text-indigo-400' :
-                                    project.environment === 'Staging' ? 'bg-amber-500/10 text-amber-400' :
-                                        'bg-gray-500/10 text-gray-400'
-                                    }`}>
-                                    {project.environment}
-                                </span>
+            {filteredProjects.length === 0 ? (
+                <div className="text-center py-12 bg-dark-card/30 rounded-xl border border-dark-border">
+                    <Search className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                    <h3 className="text-lg font-medium text-white mb-1">No projects found</h3>
+                    <p className="text-gray-400">
+                        Try adjusting your search or environment filters.
+                    </p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProjects.map((project) => (
+                        <Link to={`/projects/${project.id}`} key={project.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden hover:border-brand-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-500/10">
+                            <div className="p-5 flex-1">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${project.environment === 'Prod' ? 'bg-indigo-500/10 text-indigo-400' :
+                                        project.environment === 'Staging' ? 'bg-amber-500/10 text-amber-400' :
+                                            'bg-gray-500/10 text-gray-400'
+                                        }`}>
+                                        {project.environment}
+                                    </span>
+                                </div>
+
+                                <h3 className="text-lg font-semibold text-white group-hover:text-brand-400 transition-colors mb-2">
+                                    {project.name}
+                                </h3>
+
+                                <p className="text-sm text-gray-400 line-clamp-2 min-h-[40px]">
+                                    {project.description}
+                                </p>
+
+                                {project.primary_domain && (
+                                    <div className="mt-4 flex items-center text-sm text-gray-300 bg-white/5 w-fit px-2.5 py-1 rounded-md border border-white/5">
+                                        <Globe className="flex-shrink-0 mr-1.5 h-4 w-4 text-brand-500" />
+                                        <span className="truncate">{project.primary_domain}</span>
+                                    </div>
+                                )}
                             </div>
 
-                            <h3 className="text-lg font-semibold text-white group-hover:text-brand-400 transition-colors mb-2">
-                                {project.name}
-                            </h3>
-
-                            <p className="text-sm text-gray-400 line-clamp-2 min-h-[40px]">
-                                {project.description}
-                            </p>
-
-                            {project.primary_domain && (
-                                <div className="mt-4 flex items-center text-sm text-gray-300 bg-white/5 w-fit px-2.5 py-1 rounded-md border border-white/5">
-                                    <Globe className="flex-shrink-0 mr-1.5 h-4 w-4 text-brand-500" />
-                                    <span className="truncate">{project.primary_domain}</span>
+                            <div className="px-5 py-3 bg-black/40 border-t border-dark-border flex items-center justify-between text-sm text-gray-400">
+                                <div className="flex space-x-4">
+                                    <div className="flex items-center" title="Servers">
+                                        <Server className="h-4 w-4 mr-1.5 text-gray-500" />
+                                        {project.servers?.length || Math.floor(Math.random() * 5) + 1}
+                                    </div>
+                                    <div className="flex items-center" title="Databases">
+                                        <Database className="h-4 w-4 mr-1.5 text-gray-500" />
+                                        {project.databases?.length || Math.floor(Math.random() * 3) + 1}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="px-5 py-3 bg-black/40 border-t border-dark-border flex items-center justify-between text-sm text-gray-400">
-                            <div className="flex space-x-4">
-                                <div className="flex items-center" title="Servers">
-                                    <Server className="h-4 w-4 mr-1.5 text-gray-500" />
-                                    {project.servers?.length || Math.floor(Math.random() * 5) + 1}
-                                </div>
-                                <div className="flex items-center" title="Databases">
-                                    <Database className="h-4 w-4 mr-1.5 text-gray-500" />
-                                    {project.databases?.length || Math.floor(Math.random() * 3) + 1}
-                                </div>
+                                <span className="text-brand-500 font-medium group-hover:underline text-xs">View Details &rarr;</span>
                             </div>
-                            <span className="text-brand-500 font-medium group-hover:underline text-xs">View Details &rarr;</span>
-                        </div>
-                    </Link>
-                ))}
-            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
