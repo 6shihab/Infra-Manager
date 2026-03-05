@@ -1,0 +1,68 @@
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from cryptography.fernet import Fernet
+import jwt
+from jwt.exceptions import InvalidTokenError
+from pydantic import ValidationError
+
+from app import models, schemas
+from app.database import get_db
+from app.config import settings
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(email=email)
+    except (InvalidTokenError, ValidationError):
+        raise credentials_exception
+    user = db.query(models.User).filter(models.User.email == token_data.email).first()
+    if user is None:
+        raise credentials_exception
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return user
+
+def get_current_active_superuser(current_user: models.User = Depends(get_current_user)):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
+    return current_user
+
+def require_project_role(required_roles: list[str]):
+    """
+    Dependency to check if the current user has access to a specific project.
+    Expects project_id as a path parameter or query parameter.
+    """
+    def role_checker(project_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+        if current_user.is_superuser:
+            return True
+        
+        # Get all groups the user belongs to
+        user_group_ids = [group.id for group in current_user.groups]
+        
+        if not user_group_ids:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+
+        # Check if any of these groups grant access to the requested project
+        access = db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id == project_id,
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(required_roles)
+        ).first()
+
+        if not access:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions for this project")
+        
+        return True
+    
+    return role_checker

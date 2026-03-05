@@ -2,6 +2,58 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+class UserBase(BaseModel):
+    email: str
+    full_name: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
+
+class UserCreate(UserBase):
+    password: str
+
+class UserResponse(UserBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class GroupBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class GroupCreate(GroupBase):
+    pass
+
+class GroupResponse(GroupBase):
+    id: int
+    users: List['UserResponse'] = []
+    class Config:
+        from_attributes = True
+
+class AccessLevelEnum(str, Enum):
+    VIEWER = "Viewer"
+    EDITOR = "Editor"
+    ADMIN = "Admin"
+
+class ProjectGroupAccessBase(BaseModel):
+    project_id: int
+    group_id: int
+    access_level: AccessLevelEnum = AccessLevelEnum.VIEWER
+
+class ProjectGroupAccessCreate(ProjectGroupAccessBase):
+    pass
+
+class ProjectGroupAccessResponse(ProjectGroupAccessBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class EnvironmentEnum(str, Enum):
     dev = "Dev"
     staging = "Staging"
@@ -82,6 +134,7 @@ class ProjectResponse(ProjectBase):
     servers: List[ServerResponse] = []
     databases: List[DatabaseInfoResponse] = []
     components: List['ComponentResponse'] = []
+    group_accesses: List[ProjectGroupAccessResponse] = []
     class Config:
         from_attributes = True
 

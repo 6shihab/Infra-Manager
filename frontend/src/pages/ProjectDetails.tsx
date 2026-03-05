@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2 } from 'lucide-react';
+import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 function SecretField({ username, password, ssh_key, label, isCustomField = false, customValue = "" }: { username?: string, password?: string, ssh_key?: string, label: string, isCustomField?: boolean, customValue?: string }) {
     const [revealed, setRevealed] = useState(false);
@@ -57,6 +58,47 @@ export function ProjectDetails() {
     // Custom Modal State
     const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: number | null, title: string } | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Access Control State
+    const { user } = useAuth();
+    const [allGroups, setAllGroups] = useState<any[]>([]);
+    const [assigningGroup, setAssigningGroup] = useState(false);
+    const [selectedGroupId, setSelectedGroupId] = useState('');
+    const [selectedAccessLevel, setSelectedAccessLevel] = useState('Viewer');
+
+    useEffect(() => {
+        if (user?.is_superuser) {
+            axios.get('http://localhost:8000/groups/')
+                .then(res => setAllGroups(res.data))
+                .catch(err => console.error("Failed to fetch groups", err));
+        }
+    }, [user?.is_superuser]);
+
+    const handleAssignGroup = async () => {
+        if (!selectedGroupId) return;
+        try {
+            await axios.post(`http://localhost:8000/projects/${id}/groups/${selectedGroupId}?access_level=${selectedAccessLevel}`);
+            // refresh project
+            const res = await axios.get(`http://localhost:8000/projects/${id}`);
+            setProject(res.data);
+            setAssigningGroup(false);
+            setSelectedGroupId('');
+            setSelectedAccessLevel('Viewer');
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Failed to assign group");
+        }
+    };
+
+    const handleRemoveGroup = async (groupId: number) => {
+        if (!confirm('Remove this group from the project?')) return;
+        try {
+            await axios.delete(`http://localhost:8000/projects/${id}/groups/${groupId}`);
+            const res = await axios.get(`http://localhost:8000/projects/${id}`);
+            setProject(res.data);
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Failed to remove group");
+        }
+    }
 
     const executeDelete = async () => {
         if (!deleteConfig) return;
@@ -321,6 +363,87 @@ export function ProjectDetails() {
                     ))}
                 </div>
             </div>
+
+            {/* Access Control section (Superuser only) */}
+            {user?.is_superuser && (
+                <div className="mt-12 bg-black/20 border border-brand-500/20 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-xl font-semibold text-white flex items-center">
+                                <Shield className="mr-2 h-6 w-6 text-brand-500" />
+                                Access Control
+                            </h2>
+                            <p className="text-sm text-gray-400 mt-1">Manage which groups have access to this project.</p>
+                        </div>
+                        <button
+                            onClick={() => setAssigningGroup(!assigningGroup)}
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            {assigningGroup ? 'Cancel' : <><Plus className="h-4 w-4 mr-2" /> Assign Group</>}
+                        </button>
+                    </div>
+
+                    {assigningGroup && (
+                        <div className="mb-6 p-4 glass-panel border border-brand-500/30 rounded-lg flex flex-col sm:flex-row gap-3">
+                            <select
+                                value={selectedGroupId}
+                                onChange={(e) => setSelectedGroupId(e.target.value)}
+                                className="flex-1 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
+                            >
+                                <option value="">Select a Group...</option>
+                                {allGroups.filter(g => !project.group_accesses?.some((pga: any) => pga.group_id === g.id)).map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedAccessLevel}
+                                onChange={(e) => setSelectedAccessLevel(e.target.value)}
+                                className="w-full sm:w-48 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
+                            >
+                                <option value="Viewer">Viewer</option>
+                                <option value="Editor">Editor</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                            <button
+                                onClick={handleAssignGroup}
+                                disabled={!selectedGroupId}
+                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                Assign
+                            </button>
+                        </div>
+                    )}
+
+                    {project.group_accesses?.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {project.group_accesses.map((pga: any) => {
+                                const groupName = allGroups.find(g => g.id === pga.group_id)?.name || `Group ID: ${pga.group_id}`;
+                                return (
+                                    <div key={pga.id} className="glass-panel p-4 rounded-lg flex items-center justify-between group">
+                                        <div>
+                                            <div className="text-white font-medium mb-1">{groupName}</div>
+                                            <div className="text-xs font-semibold px-2 py-0.5 rounded-full inline-flex border bg-white/5 border-white/10 text-gray-300">
+                                                {pga.access_level}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveGroup(pga.group_id)}
+                                            className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Revoke Access"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <span className="text-gray-500 text-sm">No groups have been assigned access to this project.</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Custom Delete Confirmation Modal */}
             {deleteConfig && (

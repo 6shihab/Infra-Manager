@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
+from app.dependencies import get_current_user
 
-router = APIRouter(prefix="/components", tags=["components"])
+router = APIRouter(prefix="/components", tags=["components"], dependencies=[Depends(get_current_user)])
 
 @router.get("/", response_model=List[schemas.ComponentResponse])
 def read_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

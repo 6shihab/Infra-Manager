@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Boolean, Table
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import JSON, TypeDecorator
@@ -76,6 +76,52 @@ class EnvironmentEnum(str, enum.Enum):
     staging = "Staging"
     prod = "Prod"
 
+class AccessLevelEnum(str, enum.Enum):
+    VIEWER = "Viewer"
+    EDITOR = "Editor"
+    ADMIN = "Admin"
+
+# --- RBAC Models ---
+
+user_group_link = Table(
+    'user_group_link',
+    Base.metadata,
+    Column('user_id', Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
+    Column('group_id', Integer, ForeignKey('groups.id', ondelete="CASCADE"), primary_key=True)
+)
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    
+    groups = relationship("Group", secondary=user_group_link, back_populates="users")
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(String)
+    
+    users = relationship("User", secondary=user_group_link, back_populates="groups")
+    project_accesses = relationship("ProjectGroupAccess", back_populates="group", cascade="all, delete-orphan")
+
+class ProjectGroupAccess(Base):
+    __tablename__ = "project_group_access"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
+
+    project = relationship("Project", back_populates="group_accesses")
+    group = relationship("Group", back_populates="project_accesses")
+
+# --- Infrastructure Models ---
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -88,6 +134,7 @@ class Project(Base):
     servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
     databases = relationship("DatabaseInfo", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
+    group_accesses = relationship("ProjectGroupAccess", back_populates="project", cascade="all, delete-orphan")
 
 class Server(Base):
     __tablename__ = "servers"

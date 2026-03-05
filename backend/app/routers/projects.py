@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
+from app.dependencies import get_current_user
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
 def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -48,3 +49,47 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     db.delete(db_project)
     db.commit()
     return {"status": "deleted"}
+
+@router.post("/{project_id}/groups/{group_id}", response_model=schemas.ProjectGroupAccessResponse)
+def add_group_to_project(project_id: int, group_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db)):
+    # Check if project exists
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    # Check if group exists
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not group:
+         raise HTTPException(status_code=404, detail="Group not found")
+
+    # Check for existing mapping
+    existing = db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id == project_id,
+        models.ProjectGroupAccess.group_id == group_id
+    ).first()
+    
+    if existing:
+        existing.access_level = access_level
+        db.commit()
+        db.refresh(existing)
+        return existing
+        
+    new_access = models.ProjectGroupAccess(project_id=project_id, group_id=group_id, access_level=access_level)
+    db.add(new_access)
+    db.commit()
+    db.refresh(new_access)
+    return new_access
+
+@router.delete("/{project_id}/groups/{group_id}")
+def remove_group_from_project(project_id: int, group_id: int, db: Session = Depends(get_db)):
+    access = db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id == project_id,
+        models.ProjectGroupAccess.group_id == group_id
+    ).first()
+    
+    if not access:
+        raise HTTPException(status_code=404, detail="Access rule not found")
+        
+    db.delete(access)
+    db.commit()
+    return {"status": "success"}

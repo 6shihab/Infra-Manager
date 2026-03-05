@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
+from app.dependencies import get_current_user
 
-router = APIRouter(prefix="/servers", tags=["servers"])
+router = APIRouter(prefix="/servers", tags=["servers"], dependencies=[Depends(get_current_user)])
 
 @router.get("/", response_model=List[schemas.ServerResponse])
 def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
