@@ -12,7 +12,7 @@ app = FastAPI(title="Infra Manager API")
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Vite dev server
+    allow_origins=["http://localhost:5173", "http://localhost:3000"], # Vite dev server and Docker Nginx
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
