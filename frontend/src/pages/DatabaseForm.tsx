@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { ArrowLeft, Database } from 'lucide-react';
 
 export function DatabaseForm() {
@@ -23,7 +23,7 @@ export function DatabaseForm() {
 
     useEffect(() => {
         if (isEditMode) {
-            axios.get(`http://localhost:8000/databases/${databaseId}`)
+            api.get(`/databases/${databaseId}`)
                 .then(res => {
                     setFormData({
                         project_id: res.data.project_id,
@@ -45,9 +45,9 @@ export function DatabaseForm() {
         setLoading(true);
         try {
             if (isEditMode) {
-                await axios.put(`http://localhost:8000/databases/${databaseId}`, formData);
+                await api.put(`/databases/${databaseId}`, formData);
             } else {
-                await axios.post('http://localhost:8000/databases/', formData);
+                await api.post('/databases/', formData);
             }
             navigate(`/projects/${projectId}`);
         } catch (err) {

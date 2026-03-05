@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Server, Database, Globe } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 // Mock data to use when backend is unavailable
 const fallbackProjects = [
@@ -16,7 +16,7 @@ export function Projects() {
 
     useEffect(() => {
         // Attempt to fetch from backend
-        axios.get('http://localhost:8000/projects/')
+        api.get('/projects/')
             .then(response => {
                 setProjects(response.data);
             })

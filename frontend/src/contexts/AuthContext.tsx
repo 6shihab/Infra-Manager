@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 interface User {
     id: number;
@@ -25,8 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (token) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            axios.get('http://localhost:8000/auth/me')
+            api.get('/auth/me')
                 .then(res => {
                     setUser(res.data);
                 })
@@ -38,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setLoading(false);
                 });
         } else {
-            delete axios.defaults.headers.common['Authorization'];
             setUser(null);
             setLoading(false);
         }

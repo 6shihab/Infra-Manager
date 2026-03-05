@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
@@ -99,7 +99,7 @@ export function ProjectDetails() {
 
     useEffect(() => {
         if (user?.is_superuser) {
-            axios.get('http://localhost:8000/groups/')
+            api.get('/groups/')
                 .then(res => setAllGroups(res.data))
                 .catch(err => console.error("Failed to fetch groups", err));
         }
@@ -108,9 +108,9 @@ export function ProjectDetails() {
     const handleAssignGroup = async () => {
         if (!selectedGroupId) return;
         try {
-            await axios.post(`http://localhost:8000/projects/${id}/groups/${selectedGroupId}?access_level=${selectedAccessLevel}`);
+            await api.post(`/projects/${id}/groups/${selectedGroupId}?access_level=${selectedAccessLevel}`);
             // refresh project
-            const res = await axios.get(`http://localhost:8000/projects/${id}`);
+            const res = await api.get(`/projects/${id}`);
             setProject(res.data);
             setAssigningGroup(false);
             setSelectedGroupId('');
@@ -123,8 +123,8 @@ export function ProjectDetails() {
     const handleRemoveGroup = async (groupId: number) => {
         if (!confirm('Remove this group from the project?')) return;
         try {
-            await axios.delete(`http://localhost:8000/projects/${id}/groups/${groupId}`);
-            const res = await axios.get(`http://localhost:8000/projects/${id}`);
+            await api.delete(`/projects/${id}/groups/${groupId}`);
+            const res = await api.get(`/projects/${id}`);
             setProject(res.data);
         } catch (err: any) {
             alert(err.response?.data?.detail || "Failed to remove group");
@@ -136,18 +136,18 @@ export function ProjectDetails() {
         setDeleting(true);
         try {
             if (deleteConfig.type === 'project') {
-                await axios.delete(`http://localhost:8000/projects/${id}`);
+                await api.delete(`/projects/${id}`);
                 navigate('/projects');
             } else if (deleteConfig.type === 'server') {
-                await axios.delete(`http://localhost:8000/servers/${deleteConfig.id}`);
+                await api.delete(`/servers/${deleteConfig.id}`);
                 setProject({ ...project, servers: project.servers.filter((s: any) => s.id !== deleteConfig.id) });
                 setDeleteConfig(null);
             } else if (deleteConfig.type === 'database') {
-                await axios.delete(`http://localhost:8000/databases/${deleteConfig.id}`);
+                await api.delete(`/databases/${deleteConfig.id}`);
                 setProject({ ...project, databases: project.databases.filter((db: any) => db.id !== deleteConfig.id) });
                 setDeleteConfig(null);
             } else if (deleteConfig.type === 'component') {
-                await axios.delete(`http://localhost:8000/components/${deleteConfig.id}`);
+                await api.delete(`/components/${deleteConfig.id}`);
                 setProject({ ...project, components: project.components.filter((c: any) => c.id !== deleteConfig.id) });
                 setDeleteConfig(null);
             }
@@ -166,7 +166,7 @@ export function ProjectDetails() {
 
 
     useEffect(() => {
-        axios.get(`http://localhost:8000/projects/${id}`)
+        api.get(`/projects/${id}`)
             .then(res => setProject(res.data))
             .catch(err => {
                 console.error("Failed to load project from backend, falling back to mock", err);

@@ -1,4 +1,6 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Any
 
 class Settings(BaseSettings):
     database_url: str
@@ -6,6 +8,14 @@ class Settings(BaseSettings):
     secret_key: str = "your-super-secret-jwt-key-change-in-prod"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7 # 1 week
+    allowed_origins: str | list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

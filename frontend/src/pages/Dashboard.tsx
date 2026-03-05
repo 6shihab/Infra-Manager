@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Server, Database, FolderKanban, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 export function Dashboard() {
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        axios.get('http://localhost:8000/projects/')
+        api.get('/projects/')
             .then(res => setProjects(res.data))
             .catch(err => console.error("Failed to load generic data", err))
             .finally(() => setLoading(false));

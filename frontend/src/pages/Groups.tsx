@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,7 +43,7 @@ export function Groups() {
 
     const fetchGroups = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/groups/');
+            const res = await api.get('/groups/');
             setGroups(res.data);
             setError('');
         } catch (err) {
@@ -56,7 +56,7 @@ export function Groups() {
 
     const fetchAllUsers = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/users/');
+            const res = await api.get('/users/');
             setAllUsers(res.data.map((u: any) => ({ id: u.id, email: u.email, full_name: u.full_name })));
         } catch (err) {
             console.error("Failed to fetch users for assignment dropdown", err);
@@ -66,7 +66,7 @@ export function Groups() {
     const handleAddGroup = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/groups/', {
+            await api.post('/groups/', {
                 name,
                 description
             });
@@ -84,7 +84,7 @@ export function Groups() {
         if (!confirm('Are you sure you want to delete this group? This will remove all project access associated with it.')) return;
 
         try {
-            await axios.delete(`http://localhost:8000/groups/${id}`);
+            await api.delete(`/groups/${id}`);
             setGroups(groups.filter(g => g.id !== id));
         } catch (err: any) {
             const msg = err.response?.data?.detail;
@@ -96,7 +96,7 @@ export function Groups() {
         if (!selectedUserToAdd) return;
 
         try {
-            await axios.post(`http://localhost:8000/groups/${groupId}/users/${selectedUserToAdd}`);
+            await api.post(`/groups/${groupId}/users/${selectedUserToAdd}`);
             setSelectedGroup(null);
             setSelectedUserToAdd('');
             fetchGroups(); // Refresh to show new user in the group list

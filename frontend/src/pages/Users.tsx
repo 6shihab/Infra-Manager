@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -30,7 +30,7 @@ export function Users() {
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/users/');
+            const res = await api.get('/users/');
             setUsers(res.data);
             setError('');
         } catch (err) {
@@ -44,7 +44,7 @@ export function Users() {
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/users/', {
+            await api.post('/users/', {
                 email,
                 password,
                 full_name: fullName,
@@ -67,7 +67,7 @@ export function Users() {
         if (!confirm('Are you sure you want to delete this user?')) return;
 
         try {
-            await axios.delete(`http://localhost:8000/users/${id}`);
+            await api.delete(`/users/${id}`);
             setUsers(users.filter(u => u.id !== id));
         } catch (err: any) {
             const msg = err.response?.data?.detail;

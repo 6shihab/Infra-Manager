@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Save, Trash2, Layers } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 interface CustomField {
     key: string;
@@ -25,7 +25,7 @@ export function ComponentForm() {
 
     useEffect(() => {
         if (isEditMode) {
-            axios.get(`http://localhost:8000/components/${componentId}`)
+            api.get(`/components/${componentId}`)
                 .then(res => {
                     setName(res.data.name);
                     setType(res.data.type);
@@ -85,9 +85,9 @@ export function ComponentForm() {
 
         try {
             if (isEditMode) {
-                await axios.put(`http://localhost:8000/components/${componentId}`, payload);
+                await api.put(`/components/${componentId}`, payload);
             } else {
-                await axios.post('http://localhost:8000/components/', payload);
+                await api.post('/components/', payload);
             }
             navigate(`/projects/${projectId}`);
         } catch (err) {

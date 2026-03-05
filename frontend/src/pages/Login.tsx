@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { KeySquare, Lock, LogIn } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 
 export function Login() {
     const [email, setEmail] = useState('');
@@ -29,7 +29,7 @@ export function Login() {
         formData.append('password', password);
 
         try {
-            const response = await axios.post('http://localhost:8000/auth/token', formData, {
+            const response = await api.post('/auth/token', formData, {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }

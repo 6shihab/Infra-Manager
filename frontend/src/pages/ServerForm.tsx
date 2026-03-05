@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { ArrowLeft, Server } from 'lucide-react';
 
 export function ServerForm() {
@@ -23,7 +23,7 @@ export function ServerForm() {
 
     useEffect(() => {
         if (isEditMode) {
-            axios.get(`http://localhost:8000/servers/${serverId}`)
+            api.get(`/servers/${serverId}`)
                 .then(res => {
                     setFormData({
                         project_id: res.data.project_id,
@@ -45,9 +45,9 @@ export function ServerForm() {
         setLoading(true);
         try {
             if (isEditMode) {
-                await axios.put(`http://localhost:8000/servers/${serverId}`, formData);
+                await api.put(`/servers/${serverId}`, formData);
             } else {
-                await axios.post('http://localhost:8000/servers/', formData);
+                await api.post('/servers/', formData);
             }
             navigate(`/projects/${projectId}`);
         } catch (err) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,7 +22,7 @@ export function Settings() {
 
     const fetchSettings = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/settings/');
+            const res = await api.get('/settings/');
             setSettings(res.data);
             setLoading(false);
         } catch (err) {
@@ -42,7 +42,7 @@ export function Settings() {
         try {
             // Save all settings in parallel or sequentially. We will do it sequentially to handle errors.
             for (const setting of settings) {
-                await axios.put(`http://localhost:8000/settings/${setting.key}`, {
+                await api.put(`/settings/${setting.key}`, {
                     value: setting.value,
                     description: setting.description
                 });

@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app import models
 from app.database import engine
-from app.routers import projects, servers, databases, settings, components, auth, users, groups
+from app.config import settings
+from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups
 
 # Create tables matching models
 models.Base.metadata.create_all(bind=engine)
@@ -12,7 +13,7 @@ app = FastAPI(title="Infra Manager API")
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"], # Vite dev server and Docker Nginx
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,7 +22,7 @@ app.add_middleware(
 app.include_router(projects.router)
 app.include_router(servers.router)
 app.include_router(databases.router)
-app.include_router(settings.router)
+app.include_router(settings_router.router)
 app.include_router(components.router)
 app.include_router(auth.router)
 app.include_router(users.router)
