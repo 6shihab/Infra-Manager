@@ -83,15 +83,30 @@ export function DatabaseForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Database Engine</label>
-                        <select
-                            value={formData.engine} onChange={e => setFormData({ ...formData, engine: e.target.value })}
-                            className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white appearance-none">
-                            <option value="PostgreSQL 16">PostgreSQL 16</option>
-                            <option value="PostgreSQL 15">PostgreSQL 15</option>
-                            <option value="MySQL 8.0">MySQL 8.0</option>
-                            <option value="MongoDB 7.0">MongoDB 7.0</option>
-                            <option value="Redis 7">Redis 7</option>
-                        </select>
+                        <input
+                            type="text"
+                            list="engine-suggestions"
+                            value={formData.engine}
+                            onChange={e => setFormData({ ...formData, engine: e.target.value })}
+                            className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
+                            placeholder="e.g. PostgreSQL 16, MySQL 8, Redis..."
+                        />
+                        <datalist id="engine-suggestions">
+                            <option value="PostgreSQL 16" />
+                            <option value="PostgreSQL 15" />
+                            <option value="MySQL 8.0" />
+                            <option value="MySQL 5.7" />
+                            <option value="MariaDB 11" />
+                            <option value="MongoDB 7.0" />
+                            <option value="Redis 7" />
+                            <option value="SQLite 3" />
+                            <option value="Microsoft SQL Server" />
+                            <option value="Oracle DB" />
+                            <option value="Cassandra" />
+                            <option value="CockroachDB" />
+                            <option value="Elasticsearch" />
+                            <option value="ClickHouse" />
+                        </datalist>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Database Name</label>
