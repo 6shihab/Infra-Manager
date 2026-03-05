@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { KeySquare, Lock, LogIn } from 'lucide-react';
@@ -10,8 +10,14 @@ export function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login, token } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (token) {
+            navigate('/');
+        }
+    }, [token, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -1,15 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X } from 'lucide-react';
+import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+
+function CopyButton({ text, className = "" }: { text: string; className?: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className={`p-1 text-gray-400 hover:text-white transition-colors rounded hover:bg-white/10 ${className}`}
+            title="Copy to clipboard"
+        >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+    );
+}
 
 function SecretField({ username, password, ssh_key, label, isCustomField = false, customValue = "" }: { username?: string, password?: string, ssh_key?: string, label: string, isCustomField?: boolean, customValue?: string }) {
     const [revealed, setRevealed] = useState(false);
 
     return (
         <div className={`mt-3 flex items-start gap-4 p-3 bg-black/20 rounded-lg ${isCustomField ? 'border-b border-white/5 last:border-0 last:pb-3 pb-3 mt-0 mb-1 rounded-none px-2' : 'border border-dark-border'}`}>
-            <div className={`text-sm text-gray-500 mt-1 ${isCustomField ? 'w-1/3 break-words' : 'w-24'}`}>{label}</div>
+            <div className={`text-sm text-gray-500 mt-1 flex items-center gap-2 ${isCustomField ? 'w-1/3 break-words' : 'w-24'}`}>
+                {label}
+                {isCustomField && revealed && <CopyButton text={customValue} />}
+            </div>
             <div className="flex-1">
                 {revealed ? (
                     <div className="space-y-2 animate-in fade-in">
@@ -18,17 +42,24 @@ function SecretField({ username, password, ssh_key, label, isCustomField = false
                         ) : (
                             <>
                                 {username && (
-                                    <div className="flex gap-2 text-sm text-white">
+                                    <div className="flex items-center gap-2 text-sm text-white group">
                                         <span className="text-gray-400">User:</span> {username}
+                                        <CopyButton text={username} className="opacity-0 group-hover:opacity-100" />
                                     </div>
                                 )}
                                 {password && (
-                                    <div className="flex gap-2 text-sm text-white font-mono break-all">
+                                    <div className="flex items-center gap-2 text-sm text-white font-mono break-all group">
                                         <span className="text-gray-400 font-sans">Pass:</span> {password}
+                                        <CopyButton text={password} className="opacity-0 group-hover:opacity-100" />
                                     </div>
                                 )}
                                 {ssh_key && (
-                                    <div className="text-xs text-gray-500 mt-1 italic break-all font-mono">{ssh_key}</div>
+                                    <div className="relative group mt-1">
+                                        <div className="text-xs text-gray-500 italic break-all font-mono pr-8">{ssh_key}</div>
+                                        <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <CopyButton text={ssh_key} />
+                                        </div>
+                                    </div>
                                 )}
                             </>
                         )}
@@ -191,12 +222,13 @@ export function ProjectDetails() {
 
                     <div className="mt-4 flex items-center gap-6">
                         {project.primary_domain && (
-                            <div className="flex items-center text-sm text-gray-300">
+                            <div className="flex items-center text-sm text-gray-300 gap-2 group/domain">
                                 <Globe className="mr-2 h-4 w-4 text-brand-500" />
                                 <a href={`https://${project.primary_domain}`} target="_blank" rel="noreferrer" className="hover:text-brand-400 hover:underline inline-flex items-center">
                                     {project.primary_domain}
                                     <ExternalLink className="ml-1 h-3 w-3" />
                                 </a>
+                                <CopyButton text={project.primary_domain} className="opacity-0 group-hover/domain:opacity-100" />
                             </div>
                         )}
                         <div className="flex items-center text-sm text-gray-300">
@@ -234,11 +266,17 @@ export function ProjectDetails() {
                     {project.servers?.map((server: any) => (
                         <div key={server.id} className="glass-panel p-5 rounded-xl">
                             <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <div className="text-lg font-mono text-white mb-1">{server.ip_address}</div>
-                                    <div className="flex gap-3 text-xs text-gray-400">
-                                        {server.os && <span className="flex items-center"><Info className="w-3 h-3 mr-1" /> {server.os}</span>}
-                                        {server.region && <span className="flex items-center"><Globe className="w-3 h-3 mr-1" /> {server.region}</span>}
+                                <div className="flex items-start gap-3 group/btn">
+                                    <Server className="h-5 w-5 text-gray-400 mt-0.5" />
+                                    <div>
+                                        <h3 className="font-medium text-white group-hover/btn:text-brand-400 transition-colors flex items-center gap-2">
+                                            {server.ip_address}
+                                            <CopyButton text={server.ip_address} className="opacity-0 group-hover/btn:opacity-100" />
+                                        </h3>
+                                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                            {server.os && <span className="flex items-center"><Info className="w-3 h-3 mr-1" /> {server.os}</span>}
+                                            {server.region && <span className="flex items-center"><Globe className="w-3 h-3 mr-1" /> {server.region}</span>}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -287,9 +325,13 @@ export function ProjectDetails() {
                         <div key={db.id} className="glass-panel p-5 rounded-xl">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                                 <div>
-                                    <div className="text-lg font-semibold text-white mb-1">{db.db_name || 'Unnamed DB'}</div>
-                                    <div className="text-sm text-gray-400 font-mono">
+                                    <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2 group/dbn">
+                                        {db.db_name || 'Unnamed DB'}
+                                        {db.db_name && <CopyButton text={db.db_name} className="opacity-0 group-hover/dbn:opacity-100" />}
+                                    </div>
+                                    <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
                                         {db.host}:{db.port}
+                                        <CopyButton text={`${db.host}:${db.port}`} className="opacity-0 group-hover/host:opacity-100" />
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
