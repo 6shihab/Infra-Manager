@@ -231,9 +231,14 @@ export function ProjectDetails() {
                                 <CopyButton text={project.primary_domain} className="opacity-0 group-hover/domain:opacity-100" />
                             </div>
                         )}
-                        <div className="flex items-center text-sm text-gray-300">
-                            <Activity className="mr-2 h-4 w-4 text-emerald-500" />
-                            System Data Synced
+                        <div className="flex items-center text-sm text-gray-300 font-medium" title={project.last_checked_at ? `Last checked: ${new Date(project.last_checked_at).toLocaleString()}` : ''}>
+                            {project.is_online === true ? (
+                                <><span className="h-2.5 w-2.5 rounded-full mr-2 bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online</>
+                            ) : project.is_online === false ? (
+                                <><span className="h-2.5 w-2.5 rounded-full mr-2 bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span> Offline</>
+                            ) : (
+                                <><Activity className="mr-2 h-4 w-4 text-gray-500" /> Pending Check...</>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -280,8 +285,8 @@ export function ProjectDetails() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-emerald-500/10 rounded-md cursor-help" title="Status: Healthy">
-                                        <Activity className="w-4 h-4 text-emerald-500" />
+                                    <div className={`p-2 rounded-md cursor-help ${server.is_online === true ? 'bg-emerald-500/10 text-emerald-500' : server.is_online === false ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-gray-500'}`} title={server.is_online === true ? 'Status: Online' : server.is_online === false ? 'Status: Offline' : server.last_checked_at ? 'Status: Unknown' : 'Status: Pending Check'}>
+                                        <Activity className={`w-4 h-4 ${server.is_online !== null && 'animate-pulse'}`} />
                                     </div>
                                     <Link to={`/projects/${project.id}/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Server">
                                         Edit

@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Boolean, Table
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Boolean, Table, DateTime
+from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import JSON, TypeDecorator
@@ -131,6 +132,10 @@ class Project(Base):
     primary_domain = Column(String)
     environment = Column(Enum(EnvironmentEnum), default=EnvironmentEnum.dev)
 
+    # Uptime Monitoring
+    is_online = Column(Boolean, nullable=True)
+    last_checked_at = Column(DateTime, nullable=True)
+
     servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
     databases = relationship("DatabaseInfo", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
@@ -144,6 +149,10 @@ class Server(Base):
     os = Column(String)
     region = Column(String)
     project_id = Column(Integer, ForeignKey("projects.id"))
+    
+    # Uptime Monitoring
+    is_online = Column(Boolean, nullable=True)
+    last_checked_at = Column(DateTime, nullable=True)
     
     # Credentials
     username = Column(String, nullable=True)
@@ -186,3 +195,15 @@ class Component(Base):
     project_id = Column(Integer, ForeignKey("projects.id"))
 
     project = relationship("Project", back_populates="components")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    action = Column(String, nullable=False) # e.g. 'CREATED', 'DELETED', 'REVEALED'
+    resource_type = Column(String, nullable=False) # e.g. 'Project', 'Server'
+    resource_name = Column(String, nullable=True) # e.g. "My Project" or "10.0.0.1"
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

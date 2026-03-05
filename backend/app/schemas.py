@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 from enum import Enum
 
 class Token(BaseModel):
@@ -82,6 +83,8 @@ class ServerUpdate(BaseModel):
 class ServerResponse(ServerBase):
     id: int
     project_id: int
+    is_online: Optional[bool] = None
+    last_checked_at: Optional[datetime] = None
     class Config:
         from_attributes = True
 
@@ -131,6 +134,8 @@ class ProjectUpdate(BaseModel):
 
 class ProjectResponse(ProjectBase):
     id: int
+    is_online: Optional[bool] = None
+    last_checked_at: Optional[datetime] = None
     servers: List[ServerResponse] = []
     databases: List[DatabaseInfoResponse] = []
     components: List['ComponentResponse'] = []
@@ -172,5 +177,22 @@ class SettingUpdate(BaseModel):
     description: Optional[str] = None
 
 class SettingResponse(SettingBase):
+    class Config:
+        from_attributes = True
+
+# --- Audit Schemas ---
+class AuditLogBase(BaseModel):
+    user_id: Optional[int] = None
+    action: str
+    resource_type: str
+    resource_name: Optional[str] = None
+
+class AuditLogCreate(AuditLogBase):
+    pass
+
+class AuditLogResponse(AuditLogBase):
+    id: int
+    timestamp: datetime
+    user: Optional[UserResponse] = None
     class Config:
         from_attributes = True

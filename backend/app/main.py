@@ -1,14 +1,23 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app import models
 from app.database import engine
 from app.config import settings
-from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups
+from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router
+from app.monitor import start_scheduler
 
 # Create tables matching models
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Infra Manager API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting background monitoring service...")
+    start_scheduler()
+    yield
+    print("Shutting down background tasks...")
+
+app = FastAPI(title="Infra Manager API", lifespan=lifespan)
 
 # Setup CORS
 app.add_middleware(
@@ -27,6 +36,7 @@ app.include_router(components.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
+app.include_router(audit_router.router)
 
 @app.get("/")
 def read_root():

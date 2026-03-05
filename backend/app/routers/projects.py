@@ -4,6 +4,7 @@ from typing import List
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.audit import log_audit
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
@@ -13,11 +14,12 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     return projects
 
 @router.post("/", response_model=schemas.ProjectResponse)
-def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
+def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_project = models.Project(**project.model_dump())
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
+    log_audit(db, current_user.id, "CREATED", "Project", db_project.name)
     return db_project
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
@@ -28,7 +30,7 @@ def read_project(project_id: int, db: Session = Depends(get_db)):
     return db_project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
-def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db)):
+def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -39,15 +41,19 @@ def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session 
         
     db.commit()
     db.refresh(db_project)
+    log_audit(db, current_user.id, "UPDATED", "Project", db_project.name)
     return db_project
 
 @router.delete("/{project_id}")
-def delete_project(project_id: int, db: Session = Depends(get_db)):
+def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    
+    project_name = db_project.name
     db.delete(db_project)
     db.commit()
+    log_audit(db, current_user.id, "DELETED", "Project", project_name)
     return {"status": "deleted"}
 
 @router.post("/{project_id}/groups/{group_id}", response_model=schemas.ProjectGroupAccessResponse)

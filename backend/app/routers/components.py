@@ -4,6 +4,7 @@ from typing import List
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.audit import log_audit
 
 router = APIRouter(prefix="/components", tags=["components"], dependencies=[Depends(get_current_user)])
 
@@ -13,7 +14,7 @@ def read_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
     return components
 
 @router.post("/", response_model=schemas.ComponentResponse)
-def create_component(component: schemas.ComponentCreate, db: Session = Depends(get_db)):
+def create_component(component: schemas.ComponentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     project = db.query(models.Project).filter(models.Project.id == component.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -22,6 +23,7 @@ def create_component(component: schemas.ComponentCreate, db: Session = Depends(g
     db.add(db_component)
     db.commit()
     db.refresh(db_component)
+    log_audit(db, current_user.id, "CREATED", "Component", db_component.name)
     return db_component
 
 @router.get("/{component_id}", response_model=schemas.ComponentResponse)
@@ -32,7 +34,7 @@ def read_component(component_id: int, db: Session = Depends(get_db)):
     return db_component
 
 @router.put("/{component_id}", response_model=schemas.ComponentResponse)
-def update_component(component_id: int, component: schemas.ComponentUpdate, db: Session = Depends(get_db)):
+def update_component(component_id: int, component: schemas.ComponentUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_component = db.query(models.Component).filter(models.Component.id == component_id).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -43,13 +45,17 @@ def update_component(component_id: int, component: schemas.ComponentUpdate, db: 
         
     db.commit()
     db.refresh(db_component)
+    log_audit(db, current_user.id, "UPDATED", "Component", db_component.name)
     return db_component
 
 @router.delete("/{component_id}")
-def delete_component(component_id: int, db: Session = Depends(get_db)):
+def delete_component(component_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_component = db.query(models.Component).filter(models.Component.id == component_id).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
+    
+    comp_name = db_component.name
     db.delete(db_component)
     db.commit()
+    log_audit(db, current_user.id, "DELETED", "Component", comp_name)
     return {"status": "deleted"}

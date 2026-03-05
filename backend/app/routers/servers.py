@@ -4,6 +4,7 @@ from typing import List
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.audit import log_audit
 
 router = APIRouter(prefix="/servers", tags=["servers"], dependencies=[Depends(get_current_user)])
 
@@ -13,7 +14,7 @@ def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
     return servers
 
 @router.post("/", response_model=schemas.ServerResponse)
-def create_server(server: schemas.ServerCreate, db: Session = Depends(get_db)):
+def create_server(server: schemas.ServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Verify project exists
     project = db.query(models.Project).filter(models.Project.id == server.project_id).first()
     if not project:
@@ -23,6 +24,7 @@ def create_server(server: schemas.ServerCreate, db: Session = Depends(get_db)):
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
+    log_audit(db, current_user.id, "CREATED", "Server", db_server.ip_address)
     return db_server
 
 @router.get("/{server_id}", response_model=schemas.ServerResponse)
@@ -33,7 +35,7 @@ def read_server(server_id: int, db: Session = Depends(get_db)):
     return db_server
 
 @router.put("/{server_id}", response_model=schemas.ServerResponse)
-def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = Depends(get_db)):
+def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -44,13 +46,17 @@ def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = De
         
     db.commit()
     db.refresh(db_server)
+    log_audit(db, current_user.id, "UPDATED", "Server", db_server.ip_address)
     return db_server
 
 @router.delete("/{server_id}")
-def delete_server(server_id: int, db: Session = Depends(get_db)):
+def delete_server(server_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
+    
+    server_ip = db_server.ip_address
     db.delete(db_server)
     db.commit()
+    log_audit(db, current_user.id, "DELETED", "Server", server_ip)
     return {"status": "deleted"}

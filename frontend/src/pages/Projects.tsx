@@ -11,7 +11,7 @@ const fallbackProjects = [
 ];
 
 export function Projects() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const initialQuery = searchParams.get('q') || '';
 
     const [projects, setProjects] = useState<any[]>([]);
@@ -130,6 +130,13 @@ export function Projects() {
                                         }`}>
                                         {project.environment}
                                     </span>
+                                    <div className="flex items-center text-xs font-medium text-gray-400" title={project.last_checked_at ? `Last checked: ${new Date(project.last_checked_at).toLocaleString()}` : 'Not checked yet'}>
+                                        {project.is_online === true ? (
+                                            <><span className="h-2 w-2 rounded-full mr-1.5 bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online</>
+                                        ) : project.is_online === false ? (
+                                            <><span className="h-2 w-2 rounded-full mr-1.5 bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span> Offline</>
+                                        ) : null}
+                                    </div>
                                 </div>
 
                                 <h3 className="text-lg font-semibold text-white group-hover:text-brand-400 transition-colors mb-2">

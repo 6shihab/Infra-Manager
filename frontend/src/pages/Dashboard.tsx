@@ -119,8 +119,13 @@ export function Dashboard() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="flex items-center text-sm text-gray-300">
-                                            <span className="h-2 w-2 rounded-full mr-2 bg-emerald-500"></span>
-                                            Healthy
+                                            {project.is_online === true ? (
+                                                <><span className="h-2 w-2 rounded-full mr-2 bg-emerald-500 animate-pulse"></span> Online</>
+                                            ) : project.is_online === false ? (
+                                                <><span className="h-2 w-2 rounded-full mr-2 bg-red-500 animate-pulse"></span> Offline</>
+                                            ) : (
+                                                <><span className="h-2 w-2 rounded-full mr-2 bg-gray-500"></span> Unknown</>
+                                            )}
                                         </span>
                                     </td>
                                 </tr>

@@ -4,6 +4,7 @@ from typing import List
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.audit import log_audit
 
 router = APIRouter(prefix="/databases", tags=["databases"], dependencies=[Depends(get_current_user)])
 
@@ -13,7 +14,7 @@ def read_databases(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
     return databases
 
 @router.post("/", response_model=schemas.DatabaseInfoResponse)
-def create_database(database: schemas.DatabaseInfoCreate, db: Session = Depends(get_db)):
+def create_database(database: schemas.DatabaseInfoCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Verify project exists
     project = db.query(models.Project).filter(models.Project.id == database.project_id).first()
     if not project:
@@ -23,6 +24,7 @@ def create_database(database: schemas.DatabaseInfoCreate, db: Session = Depends(
     db.add(db_database)
     db.commit()
     db.refresh(db_database)
+    log_audit(db, current_user.id, "CREATED", "Database", db_database.db_name)
     return db_database
 
 @router.get("/{database_id}", response_model=schemas.DatabaseInfoResponse)
@@ -33,7 +35,7 @@ def read_database(database_id: int, db: Session = Depends(get_db)):
     return db_database
 
 @router.put("/{database_id}", response_model=schemas.DatabaseInfoResponse)
-def update_database(database_id: int, database: schemas.DatabaseInfoUpdate, db: Session = Depends(get_db)):
+def update_database(database_id: int, database: schemas.DatabaseInfoUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_database = db.query(models.DatabaseInfo).filter(models.DatabaseInfo.id == database_id).first()
     if db_database is None:
         raise HTTPException(status_code=404, detail="Database not found")
@@ -44,13 +46,17 @@ def update_database(database_id: int, database: schemas.DatabaseInfoUpdate, db: 
         
     db.commit()
     db.refresh(db_database)
+    log_audit(db, current_user.id, "UPDATED", "Database", db_database.db_name)
     return db_database
 
 @router.delete("/{database_id}")
-def delete_database(database_id: int, db: Session = Depends(get_db)):
+def delete_database(database_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_database = db.query(models.DatabaseInfo).filter(models.DatabaseInfo.id == database_id).first()
     if db_database is None:
         raise HTTPException(status_code=404, detail="Database not found")
+    
+    db_name = db_database.db_name
     db.delete(db_database)
     db.commit()
+    log_audit(db, current_user.id, "DELETED", "Database", db_name)
     return {"status": "deleted"}

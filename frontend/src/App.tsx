@@ -13,6 +13,7 @@ import { ComponentForm } from './pages/ComponentForm';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
 import { Groups } from './pages/Groups';
+import { AuditLogs } from './pages/AuditLogs';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="users" element={<Users />} />
               <Route path="groups" element={<Groups />} />
+              <Route path="audit-logs" element={<AuditLogs />} />
               <Route path="*" element={
                 <div className="flex flex-col items-center justify-center h-[60vh]">
                   <h2 className="text-2xl font-bold mb-2">404 - Page Not Found</h2>

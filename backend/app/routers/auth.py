@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import schemas, models, auth, dependencies
 from app.database import get_db
+from app.audit import log_audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,6 +19,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = auth.create_access_token(data={"sub": user.email})
+    log_audit(db, user.id, "LOGIN", "System", user.email)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=schemas.UserResponse)

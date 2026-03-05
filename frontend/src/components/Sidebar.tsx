@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut, Activity } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -52,6 +52,18 @@ export function Sidebar() {
                 {user?.is_superuser && (
                     <div className="pt-4 mt-4 border-t border-dark-border space-y-1">
                         <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Administration</p>
+                        <Link
+                            to="/audit-logs"
+                            className={clsx(
+                                'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+                                location.pathname.startsWith('/audit-logs')
+                                    ? 'bg-brand-500/10 text-brand-500'
+                                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
+                            )}
+                        >
+                            <Activity className={clsx('flex-shrink-0 h-5 w-5 mr-3 transition-colors duration-200', location.pathname.startsWith('/audit-logs') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-300')} />
+                            Audit Logs
+                        </Link>
                         <Link
                             to="/users"
                             className={clsx(
