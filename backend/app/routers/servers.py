@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -14,7 +15,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.get("/", response_model=List[schemas.ServerResponse])
 def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    servers = db.query(models.Server).offset(skip).limit(limit).all()
+    servers = db.query(models.Server).filter(models.Server.is_deleted == False).offset(skip).limit(limit).all()
     return servers
 
 @router.post("/", response_model=schemas.ServerResponse)
@@ -34,14 +35,14 @@ def create_server(request: Request, server: schemas.ServerCreate, db: Session = 
 
 @router.get("/{server_id}", response_model=schemas.ServerResponse)
 def read_server(server_id: int, db: Session = Depends(get_db)):
-    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    db_server = db.query(models.Server).filter(models.Server.id == server_id, models.Server.is_deleted == False).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
     return db_server
 
 @router.put("/{server_id}", response_model=schemas.ServerResponse)
 def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    db_server = db.query(models.Server).filter(models.Server.id == server_id, models.Server.is_deleted == False).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
         
@@ -56,12 +57,13 @@ def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = De
 
 @router.delete("/{server_id}")
 def delete_server(server_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_server = db.query(models.Server).filter(models.Server.id == server_id).first()
+    db_server = db.query(models.Server).filter(models.Server.id == server_id, models.Server.is_deleted == False).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
     
     server_ip = db_server.ip_address
-    db.delete(db_server)
+    db_server.is_deleted = True
+    db_server.deleted_at = datetime.utcnow()
     db.commit()
     log_audit(db, current_user.id, "DELETED", "Server", server_ip)
     return {"status": "deleted"}

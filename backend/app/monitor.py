@@ -4,7 +4,7 @@ import httpx
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Project, Server, AuditLog
+from app.models import Project, Server, AuditLog, DatabaseInfo, Component
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import timedelta
@@ -99,9 +99,36 @@ async def cleanup_audit_logs():
     finally:
         db.close()
 
+async def cleanup_soft_deleted_records():
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        # Hardcode 30 days or use settings
+        cutoff_date = now - timedelta(days=30)
+        print(f"[{now}] Running Soft Delete Cleanup (Deleting records older than {cutoff_date})...")
+        
+        # Delete children first to avoid foreign key constraint violations
+        deleted_servers = db.query(Server).filter(Server.is_deleted == True, Server.deleted_at < cutoff_date).delete()
+        deleted_dbs = db.query(DatabaseInfo).filter(DatabaseInfo.is_deleted == True, DatabaseInfo.deleted_at < cutoff_date).delete()
+        deleted_comps = db.query(Component).filter(Component.is_deleted == True, Component.deleted_at < cutoff_date).delete()
+        
+        # Delete parents last
+        deleted_projects = db.query(Project).filter(Project.is_deleted == True, Project.deleted_at < cutoff_date).delete()
+        
+        db.commit()
+        total_deleted = deleted_projects + deleted_servers + deleted_dbs + deleted_comps
+        if total_deleted > 0:
+            print(f"[{now}] Permanently deleted {total_deleted} soft-deleted records.")
+    except Exception as e:
+        db.rollback()
+        print(f"Error in soft delete cleanup: {e}")
+    finally:
+        db.close()
+
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(run_uptime_checks, 'interval', minutes=2)
     scheduler.add_job(cleanup_audit_logs, 'interval', hours=24)
+    scheduler.add_job(cleanup_soft_deleted_records, 'interval', hours=24)
     scheduler.start()
 

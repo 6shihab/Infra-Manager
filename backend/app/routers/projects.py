@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -22,16 +23,21 @@ def create_project(request: Request, project: schemas.ProjectCreate, db: Session
     log_audit(db, current_user.id, "CREATED", "Project", db_project.name)
     return db_project
 
+@router.get("/", response_model=List[schemas.ProjectResponse])
+def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    projects = db.query(models.Project).filter(models.Project.is_deleted == False).offset(skip).limit(limit).all()
+    return projects
+
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
 def read_project(project_id: int, db: Session = Depends(get_db)):
-    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return db_project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
 def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
         
@@ -46,12 +52,13 @@ def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session 
 
 @router.delete("/{project_id}")
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     
     project_name = db_project.name
-    db.delete(db_project)
+    db_project.is_deleted = True
+    db_project.deleted_at = datetime.utcnow()
     db.commit()
     log_audit(db, current_user.id, "DELETED", "Project", project_name)
     return {"status": "deleted"}

@@ -136,6 +136,10 @@ class Project(Base):
     is_online = Column(Boolean, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
 
+    # Soft Delete
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
+
     servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
     databases = relationship("DatabaseInfo", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
@@ -159,6 +163,10 @@ class Server(Base):
     password = Column(EncryptedString, nullable=True)
     ssh_key = Column(EncryptedString, nullable=True)
 
+    # Soft Delete
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
+
     project = relationship("Project", back_populates="servers")
 
 class DatabaseInfo(Base):
@@ -175,6 +183,10 @@ class DatabaseInfo(Base):
     # Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
+
+    # Soft Delete
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     project = relationship("Project", back_populates="databases")
 
@@ -193,6 +205,10 @@ class Component(Base):
     type = Column(String, nullable=False) # e.g. "S3 Bucket", "Redis Cache", "DNS Record"
     custom_fields = Column(EncryptedJSON, default=dict) # Handles arbitrary key-value pairs natively, fully encrypted
     project_id = Column(Integer, ForeignKey("projects.id"))
+
+    # Soft Delete
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     project = relationship("Project", back_populates="components")
 
