@@ -19,7 +19,7 @@ build/
 *.tsbuildinfo
 
 # Python / Backend
-__pycache__/
+backend/**/__pycache__/
 *.py[cod]
 *$py.class
 *.so

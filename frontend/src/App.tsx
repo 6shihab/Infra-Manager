@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { AutoLogout } from './components/AutoLogout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Projects } from './pages/Projects';
@@ -18,6 +19,7 @@ import { AuditLogs } from './pages/AuditLogs';
 function App() {
   return (
     <AuthProvider>
+      <AutoLogout />
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />

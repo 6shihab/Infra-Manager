@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -8,13 +8,18 @@ from app.audit import log_audit
 
 router = APIRouter(prefix="/servers", tags=["servers"], dependencies=[Depends(get_current_user)])
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
+
 @router.get("/", response_model=List[schemas.ServerResponse])
 def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     servers = db.query(models.Server).offset(skip).limit(limit).all()
     return servers
 
 @router.post("/", response_model=schemas.ServerResponse)
-def create_server(server: schemas.ServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@limiter.limit("20/minute")
+def create_server(request: Request, server: schemas.ServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Verify project exists
     project = db.query(models.Project).filter(models.Project.id == server.project_id).first()
     if not project:
