@@ -4,8 +4,10 @@ import httpx
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Project, Server
+from app.models import Project, Server, AuditLog
+from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import timedelta
 
 def check_tcp_port(ip: str, port: int, timeout: int = 3) -> bool:
     try:
@@ -79,8 +81,27 @@ async def run_uptime_checks():
     finally:
         db.close()
 
+async def cleanup_audit_logs():
+    db: Session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        retention_days = settings.audit_log_retention_days
+        cutoff_date = now - timedelta(days=retention_days)
+        print(f"[{now}] Running Audit Log Cleanup (Deleting logs older than {cutoff_date})...")
+        
+        deleted = db.query(AuditLog).filter(AuditLog.timestamp < cutoff_date).delete()
+        db.commit()
+        if deleted > 0:
+            print(f"[{now}] Deleted {deleted} old audit logs.")
+    except Exception as e:
+        db.rollback()
+        print(f"Error in audit log cleanup: {e}")
+    finally:
+        db.close()
+
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(run_uptime_checks, 'interval', minutes=2)
+    scheduler.add_job(cleanup_audit_logs, 'interval', hours=24)
     scheduler.start()
 
