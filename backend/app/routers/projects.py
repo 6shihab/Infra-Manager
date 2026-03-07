@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from datetime import datetime
 from fastapi_cache.decorator import cache
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -17,21 +18,10 @@ limiter = Limiter(key_func=get_remote_address)
 @router.post("/", response_model=schemas.ProjectResponse)
 @limiter.limit("20/minute")
 def create_project(request: Request, project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_project = models.Project(**project.model_dump())
+    db_project = models.Project(**project.model_dump(), created_by=current_user.id)
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
-
-    # Auto-grant creator's first group ADMIN access so the project is immediately accessible
-    if not current_user.is_superuser and current_user.groups:
-        group = current_user.groups[0]
-        access = models.ProjectGroupAccess(
-            project_id=db_project.id,
-            group_id=group.id,
-            access_level=models.AccessLevelEnum.ADMIN,
-        )
-        db.add(access)
-        db.commit()
 
     log_audit(db, current_user.id, "CREATED", "Project", db_project.name)
     return db_project
@@ -44,12 +34,15 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
         ).offset(skip).limit(limit).all()
     else:
         user_group_ids = [group.id for group in current_user.groups]
-        projects = db.query(models.Project).join(
+        projects = db.query(models.Project).outerjoin(
             models.ProjectGroupAccess,
             models.ProjectGroupAccess.project_id == models.Project.id
         ).filter(
             models.Project.is_deleted == False,
-            models.ProjectGroupAccess.group_id.in_(user_group_ids)
+            or_(
+                models.ProjectGroupAccess.group_id.in_(user_group_ids),
+                models.Project.created_by == current_user.id
+            )
         ).distinct().offset(skip).limit(limit).all()
     return projects
 

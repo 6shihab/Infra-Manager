@@ -150,6 +150,7 @@ class ProjectResponse(ProjectBase):
     id: int
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
+    created_by: Optional[int] = None
     servers: List[ServerResponse] = []
     databases: List[DatabaseInfoResponse] = []
     components: List['ComponentResponse'] = []

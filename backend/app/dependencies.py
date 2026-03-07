@@ -78,10 +78,15 @@ def require_project_role(required_roles: list[str]):
             models.ProjectGroupAccess.access_level.in_(required_roles)
         ).first()
 
-        if not access:
-            logger.warning("403 Forbidden: user=%s has no access to project=%s", current_user.id, project_id)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions for this project")
-        
-        return True
+        if access:
+            return True
+
+        # Allow the project creator to access their own project
+        project = db.query(models.Project).filter(models.Project.id == project_id).first()
+        if project and project.created_by == current_user.id:
+            return True
+
+        logger.warning("403 Forbidden: user=%s has no access to project=%s", current_user.id, project_id)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions for this project")
     
     return role_checker

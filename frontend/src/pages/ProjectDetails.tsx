@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -83,6 +84,7 @@ function SecretField({ username, password, ssh_key, label, isCustomField = false
 export function ProjectDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -137,6 +139,7 @@ export function ProjectDetails() {
         try {
             if (deleteConfig.type === 'project') {
                 await api.delete(`/projects/${id}`);
+                queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate('/projects');
             } else if (deleteConfig.type === 'server') {
                 await api.delete(`/servers/${deleteConfig.id}`);

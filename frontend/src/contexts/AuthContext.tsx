@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../utils/api';
+import { queryClient } from '../main';
 
 interface User {
     id: number;
@@ -43,21 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [token]);
 
     const login = (newToken: string) => {
+        queryClient.clear();
         localStorage.setItem('token', newToken);
         setToken(newToken);
     };
 
-    const logout = async () => {
-        if (token) {
-            try {
-                await api.post('/auth/logout');
-            } catch (error) {
-                console.error("Error during server logout", error);
-            }
-        }
+    const logout = () => {
+        // Clear UI immediately
+        const currentToken = token;
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
+        queryClient.clear();
+        // Fire-and-forget backend call for token blacklisting
+        if (currentToken) {
+            api.post('/auth/logout').catch(() => {});
+        }
     };
 
     return (

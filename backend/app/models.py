@@ -101,6 +101,7 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     
     groups = relationship("Group", secondary=user_group_link, back_populates="users")
+    created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.created_by")
 
 class Group(Base):
     __tablename__ = "groups"
@@ -140,10 +141,14 @@ class Project(Base):
     is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
+    # Creator tracking
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
     databases = relationship("DatabaseInfo", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
     group_accesses = relationship("ProjectGroupAccess", back_populates="project", cascade="all, delete-orphan")
+    creator = relationship("User", back_populates="created_projects", foreign_keys=[created_by])
 
 class Server(Base):
     __tablename__ = "servers"
