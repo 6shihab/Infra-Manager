@@ -1,3 +1,4 @@
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -9,6 +10,8 @@ from pydantic import ValidationError
 from app import models, schemas
 from app.database import get_db
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
@@ -25,6 +28,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     
     if is_token_blacklisted(db, token):
+        logger.warning("Rejected blacklisted token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
@@ -64,6 +68,7 @@ def require_project_role(required_roles: list[str]):
         user_group_ids = [group.id for group in current_user.groups]
         
         if not user_group_ids:
+            logger.warning("403 Forbidden: user=%s has no group membership", current_user.id)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
         # Check if any of these groups grant access to the requested project
@@ -74,6 +79,7 @@ def require_project_role(required_roles: list[str]):
         ).first()
 
         if not access:
+            logger.warning("403 Forbidden: user=%s has no access to project=%s", current_user.id, project_id)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions for this project")
         
         return True

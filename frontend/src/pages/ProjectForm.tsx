@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export function ProjectForm() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { id } = useParams();
     const isEditMode = Boolean(id);
     const [loading, setLoading] = useState(false);
@@ -39,9 +41,11 @@ export function ProjectForm() {
         try {
             if (isEditMode) {
                 await api.put(`/projects/${id}`, formData);
+                queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate(`/projects/${id}`);
             } else {
                 const res = await api.post('/projects/', formData);
+                queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate(`/projects/${res.data.id}`);
             }
         } catch (err) {

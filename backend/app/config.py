@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7 # 1 week
     audit_log_retention_days: int = 30
     allowed_origins: str | list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]
+    log_level: str = "INFO"
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

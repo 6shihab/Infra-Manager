@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 
 # Gunicorn configuration file
 # https://docs.gunicorn.org/en/stable/configure.html
@@ -10,4 +11,4 @@ keepalive = 5
 timeout = 120
 accesslog = "-"
 errorlog = "-"
-loglevel = "info"
+loglevel = os.getenv("LOG_LEVEL", "info").lower()

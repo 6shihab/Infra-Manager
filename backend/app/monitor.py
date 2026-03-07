@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import socket
 import httpx
 from datetime import datetime, timezone
@@ -8,6 +9,8 @@ from app.models import Project, Server, AuditLog, DatabaseInfo, Component
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 def check_tcp_port(ip: str, port: int, timeout: int = 3) -> bool:
     try:
@@ -55,7 +58,7 @@ async def run_uptime_checks():
     db: Session = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
-        print(f"[{now}] Running Uptime Health Checks...")
+        logger.info("Running Uptime Health Checks...")
         
         # Check Servers
         servers = db.query(Server).all()
@@ -77,7 +80,7 @@ async def run_uptime_checks():
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Error in uptime checks: {e}")
+        logger.exception("Error in uptime checks: %s", e)
     finally:
         db.close()
 
@@ -87,15 +90,15 @@ async def cleanup_audit_logs():
         now = datetime.utcnow()
         retention_days = settings.audit_log_retention_days
         cutoff_date = now - timedelta(days=retention_days)
-        print(f"[{now}] Running Audit Log Cleanup (Deleting logs older than {cutoff_date})...")
+        logger.info("Running Audit Log Cleanup (deleting logs older than %s)...", cutoff_date)
         
         deleted = db.query(AuditLog).filter(AuditLog.timestamp < cutoff_date).delete()
         db.commit()
         if deleted > 0:
-            print(f"[{now}] Deleted {deleted} old audit logs.")
+            logger.info("Deleted %d old audit logs.", deleted)
     except Exception as e:
         db.rollback()
-        print(f"Error in audit log cleanup: {e}")
+        logger.exception("Error in audit log cleanup: %s", e)
     finally:
         db.close()
 
@@ -105,7 +108,7 @@ async def cleanup_soft_deleted_records():
         now = datetime.utcnow()
         # Hardcode 30 days or use settings
         cutoff_date = now - timedelta(days=30)
-        print(f"[{now}] Running Soft Delete Cleanup (Deleting records older than {cutoff_date})...")
+        logger.info("Running Soft Delete Cleanup (deleting records older than %s)...", cutoff_date)
         
         # Delete children first to avoid foreign key constraint violations
         deleted_servers = db.query(Server).filter(Server.is_deleted == True, Server.deleted_at < cutoff_date).delete()
@@ -118,10 +121,10 @@ async def cleanup_soft_deleted_records():
         db.commit()
         total_deleted = deleted_projects + deleted_servers + deleted_dbs + deleted_comps
         if total_deleted > 0:
-            print(f"[{now}] Permanently deleted {total_deleted} soft-deleted records.")
+            logger.info("Permanently deleted %d soft-deleted records.", total_deleted)
     except Exception as e:
         db.rollback()
-        print(f"Error in soft delete cleanup: {e}")
+        logger.exception("Error in soft delete cleanup: %s", e)
     finally:
         db.close()
 
