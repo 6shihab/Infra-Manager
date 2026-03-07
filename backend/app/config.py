@@ -4,6 +4,7 @@ from typing import Any
 
 class Settings(BaseSettings):
     database_url: str
+    redis_url: str | None = None
     encryption_key: str | None = None
     secret_key: str = "your-super-secret-jwt-key-change-in-prod"
     algorithm: str = "HS256"

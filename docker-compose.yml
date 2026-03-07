@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
   backend:
     build:
       context: ./backend
@@ -10,6 +17,9 @@ services:
       - ./backend/.env
     environment:
       - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      - redis
 
   frontend:
     build:
@@ -20,3 +30,6 @@ services:
       - "8080:80"
     depends_on:
       - backend
+
+volumes:
+  redis_data:

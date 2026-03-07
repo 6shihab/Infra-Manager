@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from datetime import datetime
+from fastapi_cache.decorator import cache
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -24,11 +25,13 @@ def create_project(request: Request, project: schemas.ProjectCreate, db: Session
     return db_project
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
+@cache(expire=30)
 def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     projects = db.query(models.Project).filter(models.Project.is_deleted == False).offset(skip).limit(limit).all()
     return projects
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
+@cache(expire=30)
 def read_project(project_id: int, db: Session = Depends(get_db)):
     db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:

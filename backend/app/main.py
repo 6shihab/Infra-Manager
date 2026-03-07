@@ -10,6 +10,10 @@ from app.database import engine
 from app.config import settings
 from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router
 from app.monitor import start_scheduler
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.backends.inmemory import InMemoryBackend
+import redis.asyncio as redis
 
 # Create tables matching models
 models.Base.metadata.create_all(bind=engine)
@@ -18,6 +22,19 @@ models.Base.metadata.create_all(bind=engine)
 async def lifespan(app: FastAPI):
     print("Starting background monitoring service...")
     start_scheduler()
+    
+    # Initialize cache
+    redis_url = getattr(settings, "redis_url", "redis://localhost:6379")
+    try:
+        redis_client = redis.from_url(redis_url, encoding="utf8", decode_responses=True)
+        # Try to ping to see if Redis is actually up
+        await redis_client.ping()
+        FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+        print("Connected to Redis cache.")
+    except Exception as e:
+        print(f"Failed to connect to Redis ({e}), falling back to InMemoryCache.")
+        FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+        
     yield
     print("Shutting down background tasks...")
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Server, Database, Globe } from 'lucide-react';
 import api from '../utils/api';
@@ -14,10 +15,19 @@ export function Projects() {
     const [searchParams] = useSearchParams();
     const initialQuery = searchParams.get('q') || '';
 
-    const [projects, setProjects] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(initialQuery);
     const [environmentFilter, setEnvironmentFilter] = useState('All Environments');
+
+    // Supercharged React Query hook for data fetching and caching
+    const { data: fetchedProjects, isLoading: loading } = useQuery({
+        queryKey: ['projects'],
+        queryFn: async () => {
+            const { data } = await api.get('/projects/');
+            return data;
+        }
+    });
+
+    const projects = fetchedProjects || fallbackProjects;
 
     // Sync input with URL search params if they are passed from Navbar
     useEffect(() => {
@@ -28,23 +38,8 @@ export function Projects() {
         }
     }, [searchParams]);
 
-    useEffect(() => {
-        // Attempt to fetch from backend
-        api.get('/projects/')
-            .then(response => {
-                setProjects(response.data);
-            })
-            .catch((err) => {
-                console.log("Backend offline, using fallback data", err);
-                setProjects(fallbackProjects);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
-    }, []);
-
     const filteredProjects = useMemo(() => {
-        return projects.filter(project => {
+        return projects.filter((project: any) => {
             // Environment Filter
             const matchesEnv = environmentFilter === 'All Environments' || project.environment === environmentFilter;
 
@@ -120,7 +115,7 @@ export function Projects() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project) => (
+                    {filteredProjects.map((project: any) => (
                         <Link to={`/projects/${project.id}`} key={project.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden hover:border-brand-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-500/10">
                             <div className="p-5 flex-1">
                                 <div className="flex items-center justify-between mb-3">

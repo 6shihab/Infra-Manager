@@ -137,7 +137,7 @@ class Project(Base):
     last_checked_at = Column(DateTime, nullable=True)
 
     # Soft Delete
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
     servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
@@ -152,7 +152,7 @@ class Server(Base):
     ip_address = Column(String, nullable=False)
     os = Column(String)
     region = Column(String)
-    project_id = Column(Integer, ForeignKey("projects.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
     
     # Uptime Monitoring
     is_online = Column(Boolean, nullable=True)
@@ -164,7 +164,7 @@ class Server(Base):
     ssh_key = Column(EncryptedString, nullable=True)
 
     # Soft Delete
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
     project = relationship("Project", back_populates="servers")
@@ -178,14 +178,14 @@ class DatabaseInfo(Base):
     port = Column(Integer)
     connection_string_format = Column(String) # e.g. postgresql://{user}:{pass}@{host}:{port}/{db}
     db_name = Column(String)
-    project_id = Column(Integer, ForeignKey("projects.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
     
     # Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
 
     # Soft Delete
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
     project = relationship("Project", back_populates="databases")
@@ -204,10 +204,10 @@ class Component(Base):
     name = Column(String, nullable=False) # e.g. "Main Assets Bucket"
     type = Column(String, nullable=False) # e.g. "S3 Bucket", "Redis Cache", "DNS Record"
     custom_fields = Column(EncryptedJSON, default=dict) # Handles arbitrary key-value pairs natively, fully encrypted
-    project_id = Column(Integer, ForeignKey("projects.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
 
     # Soft Delete
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
     project = relationship("Project", back_populates="components")
@@ -216,9 +216,9 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    action = Column(String, nullable=False) # e.g. 'CREATED', 'DELETED', 'REVEALED'
-    resource_type = Column(String, nullable=False) # e.g. 'Project', 'Server'
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action = Column(String, nullable=False, index=True) # e.g. 'CREATED', 'DELETED', 'REVEALED'
+    resource_type = Column(String, nullable=False, index=True) # e.g. 'Project', 'Server'
     resource_name = Column(String, nullable=True) # e.g. "My Project" or "10.0.0.1"
     timestamp = Column(DateTime, default=datetime.utcnow)
 
