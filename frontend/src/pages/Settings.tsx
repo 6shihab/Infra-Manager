@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Setting {
     key: string;
     value: string;
     description: string;
+}
+
+interface UserOption {
+    id: number;
+    full_name: string | null;
+    email: string;
 }
 
 export function Settings() {
@@ -16,9 +22,31 @@ export function Settings() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+    // Self password change state
+    const [selfPw, setSelfPw] = useState({ current: '', next: '', confirm: '' });
+    const [selfPwSaving, setSelfPwSaving] = useState(false);
+    const [selfPwMsg, setSelfPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // Admin password change state
+    const [allUsers, setAllUsers] = useState<UserOption[]>([]);
+    const [adminPwUserId, setAdminPwUserId] = useState('');
+    const [adminPw, setAdminPw] = useState({ next: '', confirm: '' });
+    const [adminPwSaving, setAdminPwSaving] = useState(false);
+    const [adminPwMsg, setAdminPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
     useEffect(() => {
         fetchSettings();
-    }, []);
+        if (user?.is_superuser) fetchAllUsers();
+    }, [user]);
+
+    const fetchAllUsers = async () => {
+        try {
+            const res = await api.get('/users/');
+            setAllUsers(res.data);
+        } catch {
+            // non-critical
+        }
+    };
 
     const fetchSettings = async () => {
         try {
@@ -59,6 +87,57 @@ export function Settings() {
             setSaving(false);
             // Clear success message after 3 seconds
             setTimeout(() => setMessage(null), 3000);
+        }
+    };
+
+    const handleSelfPwChange = async () => {
+        if (selfPw.next !== selfPw.confirm) {
+            setSelfPwMsg({ text: 'New passwords do not match.', type: 'error' });
+            return;
+        }
+        setSelfPwSaving(true);
+        setSelfPwMsg(null);
+        try {
+            await api.put('/users/me/password', { current_password: selfPw.current, new_password: selfPw.next });
+            setSelfPwMsg({ text: 'Password changed successfully.', type: 'success' });
+            setSelfPw({ current: '', next: '', confirm: '' });
+        } catch (err: any) {
+            const detail = err?.response?.data?.detail;
+            let msg = 'Failed to change password.';
+            if (typeof detail === 'string') msg = detail;
+            else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
+            setSelfPwMsg({ text: msg, type: 'error' });
+        } finally {
+            setSelfPwSaving(false);
+            setTimeout(() => setSelfPwMsg(null), 4000);
+        }
+    };
+
+    const handleAdminPwChange = async () => {
+        if (!adminPwUserId) {
+            setAdminPwMsg({ text: 'Please select a user.', type: 'error' });
+            return;
+        }
+        if (adminPw.next !== adminPw.confirm) {
+            setAdminPwMsg({ text: 'New passwords do not match.', type: 'error' });
+            return;
+        }
+        setAdminPwSaving(true);
+        setAdminPwMsg(null);
+        try {
+            await api.put(`/users/${adminPwUserId}/password`, { new_password: adminPw.next });
+            setAdminPwMsg({ text: 'Password changed successfully.', type: 'success' });
+            setAdminPw({ next: '', confirm: '' });
+            setAdminPwUserId('');
+        } catch (err: any) {
+            const detail = err?.response?.data?.detail;
+            let msg = 'Failed to change password.';
+            if (typeof detail === 'string') msg = detail;
+            else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
+            setAdminPwMsg({ text: msg, type: 'error' });
+        } finally {
+            setAdminPwSaving(false);
+            setTimeout(() => setAdminPwMsg(null), 4000);
         }
     };
 
@@ -114,7 +193,83 @@ export function Settings() {
                         </div>
                     </div>
                 </div>
+
+                {/* Change Own Password */}
+                <div className="border-t border-dark-border pt-6 mt-2">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Lock className="h-5 w-5 text-brand-500" />
+                        <h3 className="text-base font-semibold text-white">Change Your Password</h3>
+                    </div>
+                    {selfPwMsg && (
+                        <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${selfPwMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {selfPwMsg.type === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
+                            {selfPwMsg.text}
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                            <input type="password" value={selfPw.current} onChange={e => setSelfPw(p => ({ ...p, current: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                            <input type="password" value={selfPw.next} onChange={e => setSelfPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                            <input type="password" value={selfPw.confirm} onChange={e => setSelfPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                        <button onClick={handleSelfPwChange} disabled={selfPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                            {selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            {/* Admin: Change Any User's Password (Superuser Only) */}
+            {user?.is_superuser && (
+                <div className="glass-panel p-6 rounded-xl space-y-4">
+                    <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
+                        <Lock className="h-6 w-6 text-brand-500" />
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Change User Password</h2>
+                            <p className="text-sm text-gray-400">Reset the password for any user account.</p>
+                        </div>
+                    </div>
+                    {adminPwMsg && (
+                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${adminPwMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {adminPwMsg.type === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
+                            {adminPwMsg.text}
+                        </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Select User</label>
+                            <select value={adminPwUserId} onChange={e => setAdminPwUserId(e.target.value)} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white appearance-none">
+                                <option value="">-- Select a user --</option>
+                                {allUsers.map(u => (
+                                    <option key={u.id} value={u.id}>{u.full_name ? `${u.full_name} (${u.email})` : u.email}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                            <input type="password" value={adminPw.next} onChange={e => setAdminPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                            <input type="password" value={adminPw.confirm} onChange={e => setAdminPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                        <button onClick={handleAdminPwChange} disabled={adminPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                            {adminPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Set Password</>}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Platform Settings Section (Superuser Only) */}
             {user?.is_superuser && (
