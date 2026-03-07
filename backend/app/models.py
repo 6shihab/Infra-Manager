@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Boolean, Table, DateTime
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import JSON, TypeDecorator
@@ -225,7 +225,7 @@ class AuditLog(Base):
     action = Column(String, nullable=False, index=True) # e.g. 'CREATED', 'DELETED', 'REVEALED'
     resource_type = Column(String, nullable=False, index=True) # e.g. 'Project', 'Server'
     resource_name = Column(String, nullable=True) # e.g. "My Project" or "10.0.0.1"
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User")
 
@@ -233,4 +233,4 @@ class TokenBlocklist(Base):
     __tablename__ = "token_blocklist"
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String, unique=True, index=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

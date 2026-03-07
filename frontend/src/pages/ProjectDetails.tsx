@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
+import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
@@ -234,7 +235,7 @@ export function ProjectDetails() {
                                 <CopyButton text={project.primary_domain} className="opacity-0 group-hover/domain:opacity-100" />
                             </div>
                         )}
-                        <div className="flex items-center text-sm text-gray-300 font-medium" title={project.last_checked_at ? `Last checked: ${new Date(project.last_checked_at).toLocaleString()}` : ''}>
+                        <div className="flex items-center text-sm text-gray-300 font-medium" title={project.last_checked_at ? `Last checked: ${formatDateTime(project.last_checked_at)}` : ''}>
                             {project.is_online === true ? (
                                 <><span className="h-2.5 w-2.5 rounded-full mr-2 bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online</>
                             ) : project.is_online === false ? (

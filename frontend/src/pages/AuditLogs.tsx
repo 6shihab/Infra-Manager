@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Clock, User, Activity, FileText } from 'lucide-react';
 import api from '../utils/api';
+import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 
@@ -76,7 +77,7 @@ export function AuditLogs() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
                                         <div className="flex items-center">
                                             <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                                            {new Date(log.timestamp).toLocaleString()}
+                                            {formatDateTime(log.timestamp)}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

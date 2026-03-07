@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Server, Database, Globe } from 'lucide-react';
 import api from '../utils/api';
+import { formatDateTime } from '../utils/dateUtils';
 
 // Mock data to use when backend is unavailable
 const fallbackProjects = [
@@ -125,7 +126,7 @@ export function Projects() {
                                         }`}>
                                         {project.environment}
                                     </span>
-                                    <div className="flex items-center text-xs font-medium text-gray-400" title={project.last_checked_at ? `Last checked: ${new Date(project.last_checked_at).toLocaleString()}` : 'Not checked yet'}>
+                                    <div className="flex items-center text-xs font-medium text-gray-400" title={project.last_checked_at ? `Last checked: ${formatDateTime(project.last_checked_at)}` : 'Not checked yet'}>
                                         {project.is_online === true ? (
                                             <><span className="h-2 w-2 rounded-full mr-1.5 bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span> Online</>
                                         ) : project.is_online === false ? (
