@@ -109,6 +109,7 @@ class EnvironmentEnum(str, Enum):
 
 # --- Server Schemas ---
 class ServerBase(BaseModel):
+    name: str
     ip_address: str
     os: Optional[str] = None
     region: Optional[str] = None
@@ -117,9 +118,10 @@ class ServerBase(BaseModel):
     ssh_key: Optional[str] = None
 
 class ServerCreate(ServerBase):
-    project_id: int
+    pass
 
 class ServerUpdate(BaseModel):
+    name: Optional[str] = None
     ip_address: Optional[str] = None
     os: Optional[str] = None
     region: Optional[str] = None
@@ -129,37 +131,66 @@ class ServerUpdate(BaseModel):
 
 class ServerResponse(ServerBase):
     id: int
-    project_id: int
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
     class Config:
         from_attributes = True
 
-# --- DatabaseInfo Schemas ---
-class DatabaseInfoBase(BaseModel):
+class ProjectServerCreate(BaseModel):
+    server_id: int
+    username: Optional[str] = None
+    password: Optional[str] = None
+    ssh_key: Optional[str] = None
+
+class ProjectServerResponse(BaseModel):
+    project_id: int
+    server_id: int
+    username: Optional[str] = None
+    server: ServerResponse
+    
+    class Config:
+        from_attributes = True
+
+# --- DatabaseEngine Schemas ---
+class DatabaseEngineBase(BaseModel):
+    name: str
     engine: str
     host: str
     port: Optional[int] = None
     connection_string_format: Optional[str] = None
-    db_name: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
 
-class DatabaseInfoCreate(DatabaseInfoBase):
-    project_id: int
+class DatabaseEngineCreate(DatabaseEngineBase):
+    pass
 
-class DatabaseInfoUpdate(BaseModel):
+class DatabaseEngineUpdate(BaseModel):
+    name: Optional[str] = None
     engine: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     connection_string_format: Optional[str] = None
-    db_name: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
 
-class DatabaseInfoResponse(DatabaseInfoBase):
+class DatabaseEngineResponse(DatabaseEngineBase):
     id: int
+    class Config:
+        from_attributes = True
+
+class ProjectDatabaseCreate(BaseModel):
+    database_engine_id: int
+    db_name: str
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+class ProjectDatabaseResponse(BaseModel):
     project_id: int
+    database_engine_id: int
+    db_name: str
+    username: Optional[str] = None
+    database_engine: DatabaseEngineResponse
+
     class Config:
         from_attributes = True
 
@@ -184,8 +215,8 @@ class ProjectResponse(ProjectBase):
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
     created_by: Optional[int] = None
-    servers: List[ServerResponse] = []
-    databases: List[DatabaseInfoResponse] = []
+    server_links: List[ProjectServerResponse] = []
+    database_links: List[ProjectDatabaseResponse] = []
     components: List['ComponentResponse'] = []
     group_accesses: List[ProjectGroupAccessResponse] = []
     class Config:

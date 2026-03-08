@@ -5,7 +5,7 @@ import httpx
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Project, Server, AuditLog, DatabaseInfo, Component
+from app.models import Project, Server, AuditLog, DatabaseEngine, Component
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import timedelta
@@ -112,7 +112,7 @@ async def cleanup_soft_deleted_records():
         
         # Delete children first to avoid foreign key constraint violations
         deleted_servers = db.query(Server).filter(Server.is_deleted == True, Server.deleted_at < cutoff_date).delete()
-        deleted_dbs = db.query(DatabaseInfo).filter(DatabaseInfo.is_deleted == True, DatabaseInfo.deleted_at < cutoff_date).delete()
+        deleted_dbs = db.query(DatabaseEngine).filter(DatabaseEngine.is_deleted == True, DatabaseEngine.deleted_at < cutoff_date).delete()
         deleted_comps = db.query(Component).filter(Component.is_deleted == True, Component.deleted_at < cutoff_date).delete()
         
         # Delete parents last

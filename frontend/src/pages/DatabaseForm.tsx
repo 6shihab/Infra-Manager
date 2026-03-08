@@ -5,18 +5,18 @@ import { ArrowLeft, Database } from 'lucide-react';
 
 export function DatabaseForm() {
     const navigate = useNavigate();
-    const { projectId, databaseId } = useParams();
+    const { databaseId } = useParams();
     const isEditMode = Boolean(databaseId);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
 
-    // Database payload includes credentials
+    // Database payload includes default credentials
     const [formData, setFormData] = useState({
-        project_id: Number(projectId),
+        name: '',
         engine: 'PostgreSQL 16',
         host: '',
         port: 5432,
-        db_name: '',
+        connection_string_format: '',
         username: '',
         password: ''
     });
@@ -26,11 +26,11 @@ export function DatabaseForm() {
             api.get(`/databases/${databaseId}`)
                 .then(res => {
                     setFormData({
-                        project_id: res.data.project_id,
+                        name: res.data.name || '',
                         engine: res.data.engine || 'PostgreSQL 16',
                         host: res.data.host || '',
                         port: res.data.port || 5432,
-                        db_name: res.data.db_name || '',
+                        connection_string_format: res.data.connection_string_format || '',
                         username: res.data.username || '',
                         password: res.data.password || ''
                     });
@@ -49,9 +49,9 @@ export function DatabaseForm() {
             } else {
                 await api.post('/databases/', formData);
             }
-            navigate(`/projects/${projectId}`);
+            navigate(`/databases`);
         } catch (err) {
-            console.error("Failed to save database", err);
+            console.error("Failed to save database engine", err);
             alert("Error saving database.");
             setLoading(false);
         }
@@ -67,19 +67,26 @@ export function DatabaseForm() {
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in duration-300">
-            <Link to={`/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
+            <Link to={`/databases`} className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Project
+                Back to Database Engines
             </Link>
 
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-                    <Database className="h-6 w-6 text-brand-500" /> {isEditMode ? 'Edit Database' : 'Add Database'}
+                    <Database className="h-6 w-6 text-brand-500" /> {isEditMode ? 'Edit Database Engine' : 'Add Database Engine'}
                 </h1>
-                <p className="text-sm text-gray-400 mt-1">{isEditMode ? 'Update this database connection details.' : 'Register a new database connection to this project.'}</p>
+                <p className="text-sm text-gray-400 mt-1">{isEditMode ? 'Update this database engine connection details.' : 'Register a new global database engine.'}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-xl space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Engine Name *</label>
+                    <input required type="text"
+                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
+                        placeholder="e.g. Primary HA Database Cluster" />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Database Engine</label>
@@ -109,11 +116,11 @@ export function DatabaseForm() {
                         </datalist>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Database Name</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Connection String Format (Optional)</label>
                         <input type="text"
-                            value={formData.db_name} onChange={e => setFormData({ ...formData, db_name: e.target.value })}
-                            className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                            placeholder="e.g. erp_production" />
+                            value={formData.connection_string_format} onChange={e => setFormData({ ...formData, connection_string_format: e.target.value })}
+                            className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white font-mono text-sm"
+                            placeholder="e.g. postgresql://{user}:{pass}@{host}:{port}/{db}" />
                     </div>
                 </div>
 

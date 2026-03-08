@@ -10,8 +10,12 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({
 const Projects = React.lazy(() => import('./pages/Projects').then(module => ({ default: module.Projects })));
 const ProjectDetails = React.lazy(() => import('./pages/ProjectDetails').then(module => ({ default: module.ProjectDetails })));
 const ProjectForm = React.lazy(() => import('./pages/ProjectForm').then(module => ({ default: module.ProjectForm })));
+const Servers = React.lazy(() => import('./pages/Servers').then(module => ({ default: module.Servers })));
 const ServerForm = React.lazy(() => import('./pages/ServerForm').then(module => ({ default: module.ServerForm })));
+const ProjectServerForm = React.lazy(() => import('./pages/ProjectServerForm').then(module => ({ default: module.ProjectServerForm })));
+const DatabaseEngines = React.lazy(() => import('./pages/DatabaseEngines').then(module => ({ default: module.DatabaseEngines })));
 const DatabaseForm = React.lazy(() => import('./pages/DatabaseForm').then(module => ({ default: module.DatabaseForm })));
+const ProjectDatabaseForm = React.lazy(() => import('./pages/ProjectDatabaseForm').then(module => ({ default: module.ProjectDatabaseForm })));
 const ComponentForm = React.lazy(() => import('./pages/ComponentForm').then(module => ({ default: module.ComponentForm })));
 const Settings = React.lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
 const Users = React.lazy(() => import('./pages/Users').then(module => ({ default: module.Users })));
@@ -34,10 +38,14 @@ function App() {
                 <Route path="projects/new" element={<ProjectForm />} />
                 <Route path="projects/:id" element={<ProjectDetails />} />
                 <Route path="projects/:id/edit" element={<ProjectForm />} />
-                <Route path="projects/:projectId/servers/new" element={<ServerForm />} />
-                <Route path="projects/:projectId/servers/:serverId/edit" element={<ServerForm />} />
-                <Route path="projects/:projectId/databases/new" element={<DatabaseForm />} />
-                <Route path="projects/:projectId/databases/:databaseId/edit" element={<DatabaseForm />} />
+                <Route path="projects/:projectId/servers/new" element={<ProjectServerForm />} />
+                <Route path="projects/:projectId/databases/new" element={<ProjectDatabaseForm />} />
+                <Route path="servers" element={<Servers />} />
+                <Route path="servers/new" element={<ServerForm />} />
+                <Route path="servers/:serverId/edit" element={<ServerForm />} />
+                <Route path="databases" element={<DatabaseEngines />} />
+                <Route path="databases/new" element={<DatabaseForm />} />
+                <Route path="databases/:databaseId/edit" element={<DatabaseForm />} />
                 <Route path="projects/:projectId/components/new" element={<ComponentForm />} />
                 <Route path="projects/:projectId/components/:componentId/edit" element={<ComponentForm />} />
                 <Route path="settings" element={<Settings />} />

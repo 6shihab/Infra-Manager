@@ -5,14 +5,14 @@ import { ArrowLeft, Server } from 'lucide-react';
 
 export function ServerForm() {
     const navigate = useNavigate();
-    const { projectId, serverId } = useParams();
+    const { serverId } = useParams();
     const isEditMode = Boolean(serverId);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
 
-    // Server payload includes credentials
+    // Server payload includes default credentials
     const [formData, setFormData] = useState({
-        project_id: Number(projectId),
+        name: '',
         ip_address: '',
         os: '',
         region: '',
@@ -26,7 +26,7 @@ export function ServerForm() {
             api.get(`/servers/${serverId}`)
                 .then(res => {
                     setFormData({
-                        project_id: res.data.project_id,
+                        name: res.data.name || '',
                         ip_address: res.data.ip_address || '',
                         os: res.data.os || '',
                         region: res.data.region || '',
@@ -49,7 +49,7 @@ export function ServerForm() {
             } else {
                 await api.post('/servers/', formData);
             }
-            navigate(`/projects/${projectId}`);
+            navigate(`/servers`);
         } catch (err) {
             console.error("Failed to save server", err);
             alert("Error saving server.");
@@ -67,19 +67,26 @@ export function ServerForm() {
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in duration-300">
-            <Link to={`/projects/${projectId}`} className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
+            <Link to={`/servers`} className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Project
+                Back to Servers
             </Link>
 
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-                    <Server className="h-6 w-6 text-brand-500" /> {isEditMode ? 'Edit Compute Server' : 'Add Compute Server'}
+                    <Server className="h-6 w-6 text-brand-500" /> {isEditMode ? 'Edit Global Server' : 'Add Global Server'}
                 </h1>
-                <p className="text-sm text-gray-400 mt-1">{isEditMode ? 'Update this server node details.' : 'Register a new server node to this project.'}</p>
+                <p className="text-sm text-gray-400 mt-1">{isEditMode ? 'Update this server details.' : 'Register a new global compute server.'}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-xl space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Server Name *</label>
+                    <input required type="text"
+                        value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
+                        placeholder="e.g. Primary App Server" />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">IP Address / Hostname *</label>

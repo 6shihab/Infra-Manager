@@ -1,11 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut, Activity } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut, Activity, Server, Database } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
+    { name: 'Servers', path: '/servers', icon: Server },
+    { name: 'Database Engines', path: '/databases', icon: Database },
     { name: 'Settings', path: '/settings', icon: Settings },
 ];
 

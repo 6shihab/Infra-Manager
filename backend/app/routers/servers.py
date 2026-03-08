@@ -21,16 +21,11 @@ def read_servers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 @router.post("/", response_model=schemas.ServerResponse)
 @limiter.limit("20/minute")
 def create_server(request: Request, server: schemas.ServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # Verify project exists
-    project = db.query(models.Project).filter(models.Project.id == server.project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-        
     db_server = models.Server(**server.model_dump())
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
-    log_audit(db, current_user.id, "CREATED", "Server", db_server.ip_address)
+    log_audit(db, current_user.id, "CREATED", "Server", db_server.name)
     return db_server
 
 @router.get("/{server_id}", response_model=schemas.ServerResponse)
@@ -52,7 +47,7 @@ def update_server(server_id: int, server: schemas.ServerUpdate, db: Session = De
         
     db.commit()
     db.refresh(db_server)
-    log_audit(db, current_user.id, "UPDATED", "Server", db_server.ip_address)
+    log_audit(db, current_user.id, "UPDATED", "Server", db_server.name)
     return db_server
 
 @router.delete("/{server_id}")
@@ -61,9 +56,9 @@ def delete_server(server_id: int, db: Session = Depends(get_db), current_user: m
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
     
-    server_ip = db_server.ip_address
+    server_name = db_server.name
     db_server.is_deleted = True
     db_server.deleted_at = datetime.utcnow()
     db.commit()
-    log_audit(db, current_user.id, "DELETED", "Server", server_ip)
+    log_audit(db, current_user.id, "DELETED", "Server", server_name)
     return {"status": "deleted"}

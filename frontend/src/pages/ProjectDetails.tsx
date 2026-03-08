@@ -143,12 +143,12 @@ export function ProjectDetails() {
                 queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate('/projects');
             } else if (deleteConfig.type === 'server') {
-                await api.delete(`/servers/${deleteConfig.id}`);
-                setProject({ ...project, servers: project.servers.filter((s: any) => s.id !== deleteConfig.id) });
+                await api.delete(`/projects/${id}/servers/${deleteConfig.id}`);
+                setProject({ ...project, server_links: project.server_links.filter((s: any) => s.server_id !== deleteConfig.id) });
                 setDeleteConfig(null);
             } else if (deleteConfig.type === 'database') {
-                await api.delete(`/databases/${deleteConfig.id}`);
-                setProject({ ...project, databases: project.databases.filter((db: any) => db.id !== deleteConfig.id) });
+                await api.delete(`/projects/${id}/databases/${deleteConfig.id}`);
+                setProject({ ...project, database_links: project.database_links.filter((db: any) => db.database_engine_id !== deleteConfig.id) });
                 setDeleteConfig(null);
             } else if (deleteConfig.type === 'component') {
                 await api.delete(`/components/${deleteConfig.id}`);
@@ -181,11 +181,11 @@ export function ProjectDetails() {
                     description: "Database might be empty or unavailable.",
                     environment: "Dev",
                     primary_domain: "dev.example.com",
-                    servers: [
-                        { id: 101, ip_address: "192.168.1.10", os: "Ubuntu 22.04 LTS", region: "AWS us-east-1", username: "root", password: "mockpassword1" }
+                    server_links: [
+                        { server_id: 101, username: "app_user", password: "mockpassword1", server: { id: 101, name: "Web Node 1", ip_address: "192.168.1.10", os: "Ubuntu 22.04 LTS", region: "AWS us-east-1" } }
                     ],
-                    databases: [
-                        { id: 201, engine: "PostgreSQL 15", host: "db.example.internal", port: 5432, db_name: "dev_db", username: "admin", password: "mockpassword2" }
+                    database_links: [
+                        { database_engine_id: 201, db_name: "dev_db", username: "admin", password: "mockpassword2", database_engine: { id: 201, name: "Primary Cluster", engine: "PostgreSQL 15", host: "db.example.internal", port: 5432 } }
                     ],
                     components: []
                 });
@@ -264,56 +264,63 @@ export function ProjectDetails() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-white flex items-center">
                         <Server className="mr-2 h-5 w-5 text-brand-500" />
-                        Compute Instances ({project.servers?.length || 0})
+                        Compute Instances ({project.server_links?.length || 0})
                     </h2>
-                    <Link to={`/projects/${project.id}/servers/new`} className="text-sm text-brand-500 hover:text-brand-400">Add Server</Link>
+                    <Link to={`/projects/${project.id}/servers/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Server</Link>
                 </div>
 
-                {project.servers?.length === 0 && <p className="text-gray-500 text-sm">No servers linked to this project.</p>}
+                {project.server_links?.length === 0 && <p className="text-gray-500 text-sm">No servers attached to this project.</p>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {project.servers?.map((server: any) => (
-                        <div key={server.id} className="glass-panel p-5 rounded-xl">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-start gap-3 group/btn">
-                                    <Server className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <div>
-                                        <h3 className="font-medium text-white group-hover/btn:text-brand-400 transition-colors flex items-center gap-2">
-                                            {server.ip_address}
-                                            <CopyButton text={server.ip_address} className="opacity-0 group-hover/btn:opacity-100" />
-                                        </h3>
-                                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                                            {server.os && <span className="flex items-center"><Info className="w-3 h-3 mr-1" /> {server.os}</span>}
-                                            {server.region && <span className="flex items-center"><Globe className="w-3 h-3 mr-1" /> {server.region}</span>}
+                    {project.server_links?.map((link: any) => {
+                        const server = link.server;
+                        return (
+                            <div key={link.server_id} className="glass-panel p-5 rounded-xl">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-start gap-3 group/btn">
+                                        <Server className="h-5 w-5 text-gray-400 mt-0.5" />
+                                        <div>
+                                            <h3 className="font-medium text-white group-hover/btn:text-brand-400 transition-colors flex items-center gap-2">
+                                                {server.name} ({server.ip_address})
+                                                <CopyButton text={server.ip_address} className="opacity-0 group-hover/btn:opacity-100" />
+                                            </h3>
+                                            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                                {server.os && <span className="flex items-center"><Info className="w-3 h-3 mr-1" /> {server.os}</span>}
+                                                {server.region && <span className="flex items-center"><Globe className="w-3 h-3 mr-1" /> {server.region}</span>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`p-2 rounded-md cursor-help ${server.is_online === true ? 'bg-emerald-500/10 text-emerald-500' : server.is_online === false ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-gray-500'}`} title={server.is_online === true ? 'Status: Online' : server.is_online === false ? 'Status: Offline' : server.last_checked_at ? 'Status: Unknown' : 'Status: Pending Check'}>
-                                        <Activity className={`w-4 h-4 ${server.is_online !== null && 'animate-pulse'}`} />
+                                    <div className="flex items-center gap-2">
+                                        <div className={`p-2 rounded-md cursor-help ${server.is_online === true ? 'bg-emerald-500/10 text-emerald-500' : server.is_online === false ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-gray-500'}`} title={server.is_online === true ? 'Status: Online' : server.is_online === false ? 'Status: Offline' : server.last_checked_at ? 'Status: Unknown' : 'Status: Pending Check'}>
+                                            <Activity className={`w-4 h-4 ${(server.is_online !== null && server.is_online !== false) ? 'animate-pulse' : ''}`} />
+                                        </div>
+                                        <Link to={`/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Global Server">
+                                            Edit Global
+                                        </Link>
+                                        <button onClick={() => handleDeleteServer(server.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Detach Server from Project">
+                                            <X className="w-4 h-4" />
+                                            <span className="sr-only">Detach</span>
+                                        </button>
                                     </div>
-                                    <Link to={`/projects/${project.id}/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Server">
-                                        Edit
-                                    </Link>
-                                    <button onClick={() => handleDeleteServer(server.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Delete Server">
-                                        <Lock className="w-4 h-4" /> {/* Or better trash icon if imported, using Lock temporarily as substitute or just 'X' */}
-                                        <span className="sr-only">Delete</span>
-                                    </button>
                                 </div>
-                            </div>
 
-                            <div className="border-t border-dark-border pt-4 mt-2">
-                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center">
-                                    <Lock className="w-3 h-3 mr-1.5" /> Credentials
+                                <div className="border-t border-dark-border pt-4 mt-2">
+                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                        <Lock className="w-3 h-3 mr-1.5" /> Authentication {(link.username || link.password || link.ssh_key) ? <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span> : <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>}
+                                    </div>
+                                    {(link.username || link.password || link.ssh_key || server.username || server.password || server.ssh_key) ? (
+                                        <SecretField
+                                            username={link.username || server.username}
+                                            password={link.password || server.password}
+                                            ssh_key={link.ssh_key || server.ssh_key}
+                                            label="SSH / Root" />
+                                    ) : (
+                                        <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                    )}
                                 </div>
-                                {(server.username || server.password || server.ssh_key) ? (
-                                    <SecretField username={server.username} password={server.password} ssh_key={server.ssh_key} label="SSH / Root" />
-                                ) : (
-                                    <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
-                                )}
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </div>
 
@@ -322,52 +329,59 @@ export function ProjectDetails() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-white flex items-center">
                         <Database className="mr-2 h-5 w-5 text-brand-500" />
-                        Databases ({project.databases?.length || 0})
+                        Databases ({project.database_links?.length || 0})
                     </h2>
-                    <Link to={`/projects/${project.id}/databases/new`} className="text-sm text-brand-500 hover:text-brand-400">Add Database</Link>
+                    <Link to={`/projects/${project.id}/databases/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Database</Link>
                 </div>
 
-                {project.databases?.length === 0 && <p className="text-gray-500 text-sm">No databases linked to this project.</p>}
+                {project.database_links?.length === 0 && <p className="text-gray-500 text-sm">No databases attached to this project.</p>}
 
                 <div className="space-y-4">
-                    {project.databases?.map((db: any) => (
-                        <div key={db.id} className="glass-panel p-5 rounded-xl">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                <div>
-                                    <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2 group/dbn">
-                                        {db.db_name || 'Unnamed DB'}
-                                        {db.db_name && <CopyButton text={db.db_name} className="opacity-0 group-hover/dbn:opacity-100" />}
+                    {project.database_links?.map((link: any) => {
+                        const db = link.database_engine;
+                        return (
+                            <div key={link.database_engine_id} className="glass-panel p-5 rounded-xl">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                    <div>
+                                        <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2 group/dbn">
+                                            {link.db_name || 'Unnamed DB'}
+                                            {link.db_name && <CopyButton text={link.db_name} className="opacity-0 group-hover/dbn:opacity-100" />}
+                                        </div>
+                                        <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
+                                            <span className="text-white bg-white/5 px-2 py-0.5 rounded text-xs items-center gap-1 font-sans mr-2 border border-dark-border inline-flex"><Database className="w-3 h-3" /> {db.name}</span>
+                                            {db.host}:{db.port}
+                                            <CopyButton text={`${db.host}:${db.port}`} className="opacity-0 group-hover/host:opacity-100" />
+                                        </div>
                                     </div>
-                                    <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
-                                        {db.host}:{db.port}
-                                        <CopyButton text={`${db.host}:${db.port}`} className="opacity-0 group-hover/host:opacity-100" />
+                                    <div className="flex items-center gap-3">
+                                        <div className="px-3 py-1 bg-brand-500/10 text-brand-400 rounded-lg text-sm font-medium border border-brand-500/20">
+                                            {db.engine}
+                                        </div>
+                                        <Link to={`/databases/${db.id}/edit`} className="text-xs text-white hover:text-gray-300 px-2 py-1 bg-white/5 hover:bg-white/10 border border-dark-border rounded" title="Edit Global Database Engine">
+                                            Edit Global
+                                        </Link>
+                                        <button onClick={() => handleDeleteDatabase(db.id)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded" title="Detach DB from Project">
+                                            Detach
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="px-3 py-1 bg-brand-500/10 text-brand-400 rounded-lg text-sm font-medium border border-brand-500/20">
-                                        {db.engine}
-                                    </div>
-                                    <Link to={`/projects/${project.id}/databases/${db.id}/edit`} className="text-xs text-white hover:text-gray-300 px-2 py-1 bg-white/5 hover:bg-white/10 border border-dark-border rounded">
-                                        Edit
-                                    </Link>
-                                    <button onClick={() => handleDeleteDatabase(db.id)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded">
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="border-t border-dark-border pt-4 mt-2">
-                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center">
-                                    <KeySquare className="w-3 h-3 mr-1.5" /> Authentication
+                                <div className="border-t border-dark-border pt-4 mt-2">
+                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                        <KeySquare className="w-3 h-3 mr-1.5" /> Authentication {(link.username || link.password) ? <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span> : <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>}
+                                    </div>
+                                    {(link.username || link.password || db.username || db.password) ? (
+                                        <SecretField
+                                            username={link.username || db.username}
+                                            password={link.password || db.password}
+                                            label="Database User" />
+                                    ) : (
+                                        <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                    )}
                                 </div>
-                                {(db.username || db.password) ? (
-                                    <SecretField username={db.username} password={db.password} label="Admin / Root" />
-                                ) : (
-                                    <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
-                                )}
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             </div>
 

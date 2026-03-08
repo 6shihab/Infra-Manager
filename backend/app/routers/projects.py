@@ -127,3 +127,85 @@ def remove_group_from_project(project_id: int, group_id: int, db: Session = Depe
     db.commit()
     log_audit(db, current_user.id, "REVOKED_ACCESS", "Project", str(project_id))
     return {"status": "success"}
+
+@router.post("/{project_id}/servers", response_model=schemas.ProjectServerResponse)
+def add_server_to_project(project_id: int, link: schemas.ProjectServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    server = db.query(models.Server).filter(models.Server.id == link.server_id, models.Server.is_deleted == False).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    existing = db.query(models.ProjectServer).filter(
+        models.ProjectServer.project_id == project_id,
+        models.ProjectServer.server_id == link.server_id
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Server already attached to this project")
+
+    project_server = models.ProjectServer(project_id=project_id, **link.model_dump())
+    db.add(project_server)
+    db.commit()
+    db.refresh(project_server)
+    log_audit(db, current_user.id, "ATTACHED", "Server", server.name)
+    return project_server
+
+@router.delete("/{project_id}/servers/{server_id}")
+def remove_server_from_project(project_id: int, server_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+    link = db.query(models.ProjectServer).filter(
+        models.ProjectServer.project_id == project_id,
+        models.ProjectServer.server_id == server_id
+    ).first()
+
+    if not link:
+        raise HTTPException(status_code=404, detail="Server link not found")
+
+    server_name = link.server.name
+    db.delete(link)
+    db.commit()
+    log_audit(db, current_user.id, "DETACHED", "Server", server_name)
+    return {"status": "success"}
+
+@router.post("/{project_id}/databases", response_model=schemas.ProjectDatabaseResponse)
+def add_database_to_project(project_id: int, link: schemas.ProjectDatabaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    engine = db.query(models.DatabaseEngine).filter(models.DatabaseEngine.id == link.database_engine_id, models.DatabaseEngine.is_deleted == False).first()
+    if not engine:
+        raise HTTPException(status_code=404, detail="DatabaseEngine not found")
+
+    existing = db.query(models.ProjectDatabase).filter(
+        models.ProjectDatabase.project_id == project_id,
+        models.ProjectDatabase.database_engine_id == link.database_engine_id
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Database Engine already attached to this project")
+
+    project_db = models.ProjectDatabase(project_id=project_id, **link.model_dump())
+    db.add(project_db)
+    db.commit()
+    db.refresh(project_db)
+    log_audit(db, current_user.id, "ATTACHED", "DatabaseEngine", engine.name)
+    return project_db
+
+@router.delete("/{project_id}/databases/{database_engine_id}")
+def remove_database_from_project(project_id: int, database_engine_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+    link = db.query(models.ProjectDatabase).filter(
+        models.ProjectDatabase.project_id == project_id,
+        models.ProjectDatabase.database_engine_id == database_engine_id
+    ).first()
+
+    if not link:
+        raise HTTPException(status_code=404, detail="Database link not found")
+
+    engine_name = link.database_engine.name
+    db.delete(link)
+    db.commit()
+    log_audit(db, current_user.id, "DETACHED", "DatabaseEngine", engine_name)
+    return {"status": "success"}

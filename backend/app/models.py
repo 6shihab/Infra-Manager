@@ -144,26 +144,41 @@ class Project(Base):
     # Creator tracking
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    servers = relationship("Server", back_populates="project", cascade="all, delete-orphan")
-    databases = relationship("DatabaseInfo", back_populates="project", cascade="all, delete-orphan")
+    servers = relationship("Server", secondary="project_server", back_populates="projects")
+    databases = relationship("DatabaseEngine", secondary="project_database", back_populates="projects")
+    server_links = relationship("ProjectServer", back_populates="project", cascade="all, delete-orphan")
+    database_links = relationship("ProjectDatabase", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
     group_accesses = relationship("ProjectGroupAccess", back_populates="project", cascade="all, delete-orphan")
     creator = relationship("User", back_populates="created_projects", foreign_keys=[created_by])
+
+class ProjectServer(Base):
+    __tablename__ = "project_server"
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    server_id = Column(Integer, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
+    
+    # Optional Specific Credentials for this project 
+    username = Column(String, nullable=True)
+    password = Column(EncryptedString, nullable=True)
+    ssh_key = Column(EncryptedString, nullable=True)
+
+    project = relationship("Project", back_populates="server_links")
+    server = relationship("Server", back_populates="project_links")
 
 class Server(Base):
     __tablename__ = "servers"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
     ip_address = Column(String, nullable=False)
     os = Column(String)
     region = Column(String)
-    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
     
     # Uptime Monitoring
     is_online = Column(Boolean, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
     
-    # Credentials
+    # Default Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
     ssh_key = Column(EncryptedString, nullable=True)
@@ -172,20 +187,34 @@ class Server(Base):
     is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
-    project = relationship("Project", back_populates="servers")
+    projects = relationship("Project", secondary="project_server", back_populates="servers")
+    project_links = relationship("ProjectServer", back_populates="server", cascade="all, delete-orphan")
 
-class DatabaseInfo(Base):
-    __tablename__ = "database_info"
+class ProjectDatabase(Base):
+    __tablename__ = "project_database"
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    database_engine_id = Column(Integer, ForeignKey("database_engines.id", ondelete="CASCADE"), primary_key=True)
+    
+    # Specifics for this project
+    db_name = Column(String, nullable=False)
+    # Optional overridden credentials
+    username = Column(String, nullable=True)
+    password = Column(EncryptedString, nullable=True)
+
+    project = relationship("Project", back_populates="database_links")
+    database_engine = relationship("DatabaseEngine", back_populates="project_links")
+
+class DatabaseEngine(Base):
+    __tablename__ = "database_engines"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
     engine = Column(String, nullable=False) # Postgres, MySQL, etc.
     host = Column(String, nullable=False)
     port = Column(Integer)
     connection_string_format = Column(String) # e.g. postgresql://{user}:{pass}@{host}:{port}/{db}
-    db_name = Column(String)
-    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
     
-    # Credentials
+    # Default Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
 
@@ -193,7 +222,8 @@ class DatabaseInfo(Base):
     is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
-    project = relationship("Project", back_populates="databases")
+    projects = relationship("Project", secondary="project_database", back_populates="databases")
+    project_links = relationship("ProjectDatabase", back_populates="database_engine", cascade="all, delete-orphan")
 
 class Setting(Base):
     __tablename__ = "settings"
