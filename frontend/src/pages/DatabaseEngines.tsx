@@ -43,8 +43,35 @@ export function DatabaseEngines() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="h-7 w-44 bg-white/5 rounded-lg animate-pulse" />
+                        <div className="h-4 w-64 bg-white/5 rounded animate-pulse" />
+                    </div>
+                    <div className="h-9 w-32 bg-white/5 rounded-lg animate-pulse" />
+                </div>
+                <div className="h-9 w-full max-w-md bg-white/5 rounded-lg animate-pulse" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="glass-panel rounded-xl border border-dark-border overflow-hidden animate-pulse">
+                            <div className="p-5 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-lg bg-white/5 shrink-0" />
+                                    <div className="space-y-2 flex-1">
+                                        <div className="h-4 w-2/3 bg-white/5 rounded" />
+                                        <div className="h-3 w-1/2 bg-white/5 rounded" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2 pt-2">
+                                    <div className="h-3 bg-white/5 rounded w-full" />
+                                    <div className="h-3 bg-white/5 rounded w-4/5" />
+                                    <div className="h-3 bg-white/5 rounded w-3/5" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }

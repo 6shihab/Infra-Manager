@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Server } from 'lucide-react';
 
@@ -9,6 +10,7 @@ export function ServerForm() {
     const isEditMode = Boolean(serverId);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
+    const queryClient = useQueryClient();
 
     // Server payload includes default credentials
     const [formData, setFormData] = useState({
@@ -49,6 +51,7 @@ export function ServerForm() {
             } else {
                 await api.post('/servers/', formData);
             }
+            await queryClient.invalidateQueries({ queryKey: ["servers"] });
             navigate(`/servers`);
         } catch (err) {
             console.error("Failed to save server", err);

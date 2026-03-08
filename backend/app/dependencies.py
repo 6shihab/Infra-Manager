@@ -55,6 +55,29 @@ def get_current_active_superuser(current_user: models.User = Depends(get_current
         raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
     return current_user
 
+def get_accessible_project_ids(user: models.User, db: Session) -> set[int] | None:
+    """Return project IDs the user can access (creator or group member). Superusers get None (= no filter)."""
+    if user.is_superuser:
+        return None
+
+    accessible: set[int] = set()
+
+    created = db.query(models.Project.id).filter(
+        models.Project.created_by == user.id,
+        models.Project.is_deleted == False,
+    ).all()
+    accessible.update(r.id for r in created)
+
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        via_group = db.query(models.ProjectGroupAccess.project_id).filter(
+            models.ProjectGroupAccess.group_id.in_(user_group_ids)
+        ).all()
+        accessible.update(r.project_id for r in via_group)
+
+    return accessible
+
+
 def require_project_role(required_roles: list[str]):
     """
     Dependency to check if the current user has access to a specific project.

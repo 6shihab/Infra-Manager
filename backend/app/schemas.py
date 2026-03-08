@@ -136,6 +136,18 @@ class ServerResponse(ServerBase):
     class Config:
         from_attributes = True
 
+class ServerListResponse(BaseModel):
+    id: int
+    name: str
+    ip_address: str
+    os: Optional[str] = None
+    region: Optional[str] = None
+    username: Optional[str] = None
+    is_online: Optional[bool] = None
+    last_checked_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
 class ProjectServerCreate(BaseModel):
     server_id: int
     username: Optional[str] = None
@@ -175,6 +187,17 @@ class DatabaseEngineUpdate(BaseModel):
 
 class DatabaseEngineResponse(DatabaseEngineBase):
     id: int
+    class Config:
+        from_attributes = True
+
+class DatabaseEngineListResponse(BaseModel):
+    id: int
+    name: str
+    engine: str
+    host: str
+    port: Optional[int] = None
+    connection_string_format: Optional[str] = None
+    username: Optional[str] = None
     class Config:
         from_attributes = True
 

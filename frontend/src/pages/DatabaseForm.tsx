@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Database } from 'lucide-react';
 
@@ -9,6 +10,7 @@ export function DatabaseForm() {
     const isEditMode = Boolean(databaseId);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
+    const queryClient = useQueryClient();
 
     // Database payload includes default credentials
     const [formData, setFormData] = useState({
@@ -49,6 +51,7 @@ export function DatabaseForm() {
             } else {
                 await api.post('/databases/', formData);
             }
+            await queryClient.invalidateQueries({ queryKey: ["databases"] });
             navigate(`/databases`);
         } catch (err) {
             console.error("Failed to save database engine", err);

@@ -187,6 +187,10 @@ class Server(Base):
     is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
 
+    # Ownership
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator = relationship("User", foreign_keys=[created_by])
+
     projects = relationship("Project", secondary="project_server", back_populates="servers")
     project_links = relationship("ProjectServer", back_populates="server", cascade="all, delete-orphan")
 
@@ -221,6 +225,10 @@ class DatabaseEngine(Base):
     # Soft Delete
     is_deleted = Column(Boolean, default=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
+
+    # Ownership
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    creator = relationship("User", foreign_keys=[created_by])
 
     projects = relationship("Project", secondary="project_database", back_populates="databases")
     project_links = relationship("ProjectDatabase", back_populates="database_engine", cascade="all, delete-orphan")
