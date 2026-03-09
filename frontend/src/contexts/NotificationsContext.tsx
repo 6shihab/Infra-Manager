@@ -61,8 +61,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         });
 
         es.onerror = () => {
-            // Do NOT close — browser auto-reconnects natively on error.
-            esRef.current = null;
+            // Leave the EventSource open — browser auto-reconnects.
+            // Keep esRef pointing to `es` so logout/re-login cleanup closes it correctly.
         };
 
         return () => {

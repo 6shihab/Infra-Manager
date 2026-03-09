@@ -69,9 +69,6 @@ async def notification_stream(token: str):
     try:
         user = _authenticate_token(token, db)
         user_id = user.id
-    except HTTPException:
-        db.close()
-        raise
     finally:
         db.close()
 

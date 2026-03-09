@@ -127,14 +127,14 @@ async def run_uptime_checks():
         # Detect offline transitions before the bulk update overwrites current state
         newly_offline_servers = [
             s for s, result in zip(servers, server_results)
-            if s.is_online is not False
+            if s.is_online is True
             and not isinstance(result, Exception)
             and bool(result) is False
         ]
         newly_offline_projects = [
             p for p, result in zip(projects, project_results)
             if p.primary_domain
-            and p.is_online is not False
+            and p.is_online is True
             and not isinstance(result, Exception)
             and bool(result) is False
         ]
