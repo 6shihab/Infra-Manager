@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 import re
+import ipaddress
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -117,6 +118,15 @@ class ServerBase(BaseModel):
     password: Optional[str] = None
     ssh_key: Optional[str] = None
 
+    @field_validator("ip_address")
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        try:
+            ipaddress.ip_address(v)
+        except ValueError:
+            raise ValueError(f"Invalid IP address: {v}")
+        return v
+
 class ServerCreate(ServerBase):
     pass
 
@@ -128,6 +138,15 @@ class ServerUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     ssh_key: Optional[str] = None
+
+    @field_validator("ip_address")
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        try:
+            ipaddress.ip_address(v)
+        except ValueError:
+            raise ValueError(f"Invalid IP address: {v}")
+        return v
 
 class ServerResponse(ServerBase):
     id: int

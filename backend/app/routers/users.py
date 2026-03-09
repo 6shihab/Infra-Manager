@@ -30,6 +30,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    log_audit(db, current_user.id, "CREATED", "User", db_user.email)
     return db_user
 
 @router.put("/me/password")
@@ -38,7 +39,7 @@ def change_own_password(payload: schemas.PasswordChange, db: Session = Depends(g
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.hashed_password = auth.get_password_hash(payload.new_password)
     db.commit()
-    log_audit(db, current_user.id, "password_changed", "User", current_user.email)
+    log_audit(db, current_user.id, "PASSWORD_CHANGED", "User", current_user.email)
     return {"status": "password updated"}
 
 @router.put("/{user_id}/password")
@@ -48,7 +49,7 @@ def admin_change_password(user_id: int, payload: schemas.AdminPasswordChange, db
         raise HTTPException(status_code=404, detail="User not found")
     target_user.hashed_password = auth.get_password_hash(payload.new_password)
     db.commit()
-    log_audit(db, current_user.id, "admin_password_changed", "User", target_user.email)
+    log_audit(db, current_user.id, "ADMIN_PASSWORD_CHANGED", "User", target_user.email)
     return {"status": "password updated"}
 
 @router.delete("/{user_id}")
@@ -60,4 +61,5 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     db.delete(db_user)
     db.commit()
+    log_audit(db, current_user.id, "DELETED", "User", db_user.email)
     return {"status": "deleted"}

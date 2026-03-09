@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
+from app.dependencies import get_current_user, get_current_active_superuser
 
 router = APIRouter(
     prefix="/settings",
@@ -25,13 +26,13 @@ def init_default_settings(db: Session):
     db.commit()
 
 @router.get("/", response_model=List[schemas.SettingResponse])
-def get_all_settings(db: Session = Depends(get_db)):
+def get_all_settings(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     init_default_settings(db)
     settings = db.query(models.Setting).all()
     return settings
 
 @router.put("/{key}", response_model=schemas.SettingResponse)
-def update_setting(key: str, setting_update: schemas.SettingUpdate, db: Session = Depends(get_db)):
+def update_setting(key: str, setting_update: schemas.SettingUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_active_superuser)):
     setting = db.query(models.Setting).filter(models.Setting.key == key).first()
     if not setting:
         raise HTTPException(status_code=404, detail="Setting not found")

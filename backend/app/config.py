@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str | None = None
     encryption_key: str | None = None
-    secret_key: str = "your-super-secret-jwt-key-change-in-prod"
+    secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7 # 1 week
     audit_log_retention_days: int = 30
