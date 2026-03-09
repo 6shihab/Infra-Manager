@@ -1,0 +1,34 @@
+appId: com.inframanager.desktop
+productName: Infra Manager
+copyright: Copyright © 2025 Infra Manager
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - dist-electron/**
+  - "!node_modules/**"
+
+extraResources:
+  - from: ../frontend/dist
+    to: renderer
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/favicon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Infra Manager
+
+# Set a publish target (e.g. github) to enable auto-updates
+publish: null
