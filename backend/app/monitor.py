@@ -4,14 +4,37 @@ import logging
 import socket
 import httpx
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import update as sa_update
+from sqlalchemy import update as sa_update, select
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Project, Server, AuditLog, DatabaseEngine, Component
+from app.models import Project, Server, AuditLog, DatabaseEngine, Component, ProjectGroupAccess, ProjectServer, user_group_link
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
+
+
+def _project_member_ids(db: Session, project_id: int) -> list[int]:
+    from app.models import Project as ProjectModel
+    project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
+    creator_id = project.created_by if project and project.created_by else None
+
+    accesses = db.query(ProjectGroupAccess).filter(
+        ProjectGroupAccess.project_id == project_id
+    ).all()
+    group_ids = [a.group_id for a in accesses]
+
+    user_ids: set[int] = set()
+    if creator_id:
+        user_ids.add(creator_id)
+    if group_ids:
+        rows = db.query(user_group_link.c.user_id).filter(
+            user_group_link.c.group_id.in_(group_ids)
+        ).distinct().all()
+        user_ids.update(r[0] for r in rows)
+
+    return list(user_ids)
+
 
 # Dedicated thread pool for TCP checks — isolated from the default asyncio executor
 # so monitor socket threads never compete with API worker threads.
@@ -101,11 +124,67 @@ async def run_uptime_checks():
             for p, result in zip(projects, project_results)
         ]
 
+        # Detect offline transitions before the bulk update overwrites current state
+        newly_offline_servers = [
+            s for s, result in zip(servers, server_results)
+            if s.is_online is not False
+            and not isinstance(result, Exception)
+            and bool(result) is False
+        ]
+        newly_offline_projects = [
+            p for p, result in zip(projects, project_results)
+            if p.primary_domain
+            and p.is_online is not False
+            and not isinstance(result, Exception)
+            and bool(result) is False
+        ]
+
         if server_rows:
             db.execute(sa_update(Server), server_rows)
         if project_rows:
             db.execute(sa_update(Project), project_rows)
         db.commit()
+
+        # Publish offline events after commit
+        if newly_offline_servers or newly_offline_projects:
+            try:
+                from app.notifications import bus
+                for server in newly_offline_servers:
+                    # Servers are shared across projects — notify users in any project that has this server
+                    project_ids_with_server = [
+                        r[0] for r in db.execute(
+                            select(ProjectServer.project_id).where(ProjectServer.server_id == server.id)
+                        ).all()
+                    ]
+                    notified: set[int] = set()
+                    for pid in project_ids_with_server:
+                        for uid in _project_member_ids(db, pid):
+                            notified.add(uid)
+                    if notified:
+                        bus.publish_to_all(list(notified), {
+                            "id": f"srv-offline-{server.id}-{int(now.timestamp())}",
+                            "type": "SERVER_OFFLINE",
+                            "action": "OFFLINE",
+                            "resource_type": "Server",
+                            "resource_name": server.name,
+                            "timestamp": now.isoformat(),
+                            "actor_name": None,
+                        })
+
+                for project in newly_offline_projects:
+                    member_ids = _project_member_ids(db, project.id)
+                    if member_ids:
+                        bus.publish_to_all(member_ids, {
+                            "id": f"proj-offline-{project.id}-{int(now.timestamp())}",
+                            "type": "PROJECT_OFFLINE",
+                            "action": "OFFLINE",
+                            "resource_type": "Project",
+                            "resource_name": project.name,
+                            "timestamp": now.isoformat(),
+                            "actor_name": None,
+                        })
+            except Exception:
+                logger.exception("Failed to publish offline notifications")
 
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
         logger.info(

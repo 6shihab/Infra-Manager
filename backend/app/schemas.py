@@ -123,9 +123,17 @@ class ServerBase(BaseModel):
     def validate_ip(cls, v: str) -> str:
         try:
             ipaddress.ip_address(v)
+            return v
         except ValueError:
-            raise ValueError(f"Invalid IP address: {v}")
-        return v
+            pass
+        # Accept hostnames: labels of 1-63 chars separated by dots, optionally trailing dot
+        hostname_re = re.compile(
+            r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*'
+            r'[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.?$'
+        )
+        if hostname_re.match(v):
+            return v
+        raise ValueError(f"Invalid IP address or hostname: {v}")
 
 class ServerCreate(ServerBase):
     pass
@@ -144,9 +152,16 @@ class ServerUpdate(BaseModel):
     def validate_ip(cls, v: str) -> str:
         try:
             ipaddress.ip_address(v)
+            return v
         except ValueError:
-            raise ValueError(f"Invalid IP address: {v}")
-        return v
+            pass
+        hostname_re = re.compile(
+            r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*'
+            r'[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.?$'
+        )
+        if hostname_re.match(v):
+            return v
+        raise ValueError(f"Invalid IP address or hostname: {v}")
 
 class ServerResponse(ServerBase):
     id: int

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { AutoLogout } from './components/AutoLogout';
 import React, { Suspense } from 'react';
 
@@ -25,6 +26,7 @@ const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(module => ({
 function App() {
   return (
     <AuthProvider>
+      <NotificationsProvider>
       <AutoLogout />
       <Router>
         <Suspense fallback={<div className="flex h-screen items-center justify-center p-4"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>}>
@@ -63,6 +65,7 @@ function App() {
           </Routes>
         </Suspense>
       </Router>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

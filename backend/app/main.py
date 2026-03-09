@@ -12,7 +12,7 @@ from app import models
 from app.database import engine
 from app.config import settings
 from app.logging_config import setup_logging
-from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router
+from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router
 from app.monitor import start_scheduler
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -97,6 +97,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(audit_router.router)
+app.include_router(notifications_router.router)
 
 
 @app.exception_handler(Exception)

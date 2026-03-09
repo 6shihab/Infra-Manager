@@ -15,6 +15,28 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 
+
+def _project_member_ids(db: Session, project_id: int) -> list[int]:
+    """Return all user IDs that have access to a project (via group access or creator)."""
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    creator_id = project.created_by if project and project.created_by else None
+
+    accesses = db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id == project_id
+    ).all()
+    group_ids = [a.group_id for a in accesses]
+
+    user_ids: set[int] = set()
+    if creator_id:
+        user_ids.add(creator_id)
+    if group_ids:
+        rows = db.query(models.user_group_link.c.user_id).filter(
+            models.user_group_link.c.group_id.in_(group_ids)
+        ).distinct().all()
+        user_ids.update(r[0] for r in rows)
+
+    return list(user_ids)
+
 @router.post("/", response_model=schemas.ProjectResponse)
 @limiter.limit("20/minute")
 def create_project(request: Request, project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -98,7 +120,8 @@ def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session 
         
     db.commit()
     db.refresh(db_project)
-    log_audit(db, current_user.id, "UPDATED", "Project", db_project.name)
+    log_audit(db, current_user.id, "UPDATED", "Project", db_project.name,
+              target_user_ids=_project_member_ids(db, project_id))
     return db_project
 
 @router.delete("/{project_id}")
@@ -108,10 +131,12 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Project not found")
     
     project_name = db_project.name
+    member_ids = _project_member_ids(db, project_id)
     db_project.is_deleted = True
     db_project.deleted_at = datetime.utcnow()
     db.commit()
-    log_audit(db, current_user.id, "DELETED", "Project", project_name)
+    log_audit(db, current_user.id, "DELETED", "Project", project_name,
+              target_user_ids=member_ids)
     return {"status": "deleted"}
 
 @router.post("/{project_id}/groups/{group_id}", response_model=schemas.ProjectGroupAccessResponse)
@@ -136,14 +161,18 @@ def add_group_to_project(project_id: int, group_id: int, access_level: schemas.A
         existing.access_level = access_level
         db.commit()
         db.refresh(existing)
-        log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name)
+        group_user_ids = [u.id for u in group.users]
+        log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name,
+                  target_user_ids=group_user_ids)
         return existing
 
     new_access = models.ProjectGroupAccess(project_id=project_id, group_id=group_id, access_level=access_level)
     db.add(new_access)
     db.commit()
     db.refresh(new_access)
-    log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name)
+    group_user_ids = [u.id for u in group.users]
+    log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name,
+              target_user_ids=group_user_ids)
     return new_access
 
 @router.delete("/{project_id}/groups/{group_id}")
@@ -156,9 +185,15 @@ def remove_group_from_project(project_id: int, group_id: int, db: Session = Depe
     if not access:
         raise HTTPException(status_code=404, detail="Access rule not found")
 
+    revoked_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    revoked_user_ids = [u.id for u in revoked_group.users] if revoked_group else []
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project_name = project.name if project else str(project_id)
+
     db.delete(access)
     db.commit()
-    log_audit(db, current_user.id, "REVOKED_ACCESS", "Project", str(project_id))
+    log_audit(db, current_user.id, "REVOKED_ACCESS", "Project", project_name,
+              target_user_ids=revoked_user_ids)
     return {"status": "success"}
 
 @router.post("/{project_id}/servers", response_model=schemas.ProjectServerResponse)
@@ -183,7 +218,8 @@ def add_server_to_project(project_id: int, link: schemas.ProjectServerCreate, db
     db.add(project_server)
     db.commit()
     db.refresh(project_server)
-    log_audit(db, current_user.id, "ATTACHED", "Server", server.name)
+    log_audit(db, current_user.id, "ATTACHED", "Server", server.name,
+              target_user_ids=_project_member_ids(db, project_id))
     return project_server
 
 @router.delete("/{project_id}/servers/{server_id}")
@@ -197,9 +233,11 @@ def remove_server_from_project(project_id: int, server_id: int, db: Session = De
         raise HTTPException(status_code=404, detail="Server link not found")
 
     server_name = link.server.name
+    member_ids = _project_member_ids(db, project_id)
     db.delete(link)
     db.commit()
-    log_audit(db, current_user.id, "DETACHED", "Server", server_name)
+    log_audit(db, current_user.id, "DETACHED", "Server", server_name,
+              target_user_ids=member_ids)
     return {"status": "success"}
 
 @router.post("/{project_id}/databases", response_model=schemas.ProjectDatabaseResponse)
@@ -224,7 +262,8 @@ def add_database_to_project(project_id: int, link: schemas.ProjectDatabaseCreate
     db.add(project_db)
     db.commit()
     db.refresh(project_db)
-    log_audit(db, current_user.id, "ATTACHED", "DatabaseEngine", engine.name)
+    log_audit(db, current_user.id, "ATTACHED", "DatabaseEngine", engine.name,
+              target_user_ids=_project_member_ids(db, project_id))
     return project_db
 
 @router.delete("/{project_id}/databases/{database_engine_id}")
@@ -238,7 +277,9 @@ def remove_database_from_project(project_id: int, database_engine_id: int, db: S
         raise HTTPException(status_code=404, detail="Database link not found")
 
     engine_name = link.database_engine.name
+    member_ids = _project_member_ids(db, project_id)
     db.delete(link)
     db.commit()
-    log_audit(db, current_user.id, "DETACHED", "DatabaseEngine", engine_name)
+    log_audit(db, current_user.id, "DETACHED", "DatabaseEngine", engine_name,
+              target_user_ids=member_ids)
     return {"status": "success"}

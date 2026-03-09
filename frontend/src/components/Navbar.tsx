@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export function Navbar() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,11 +33,7 @@ export function Navbar() {
             </div>
 
             <div className="ml-4 flex items-center md:ml-6 gap-4">
-                <button className="p-2 text-gray-400 hover:text-white transition-colors duration-200 relative">
-                    <span className="sr-only">View notifications</span>
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-brand-500 ring-2 ring-dark-card"></span>
-                </button>
+                <NotificationDropdown />
             </div>
         </header>
     );
