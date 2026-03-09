@@ -176,6 +176,7 @@ export function Servers() {
                 open={confirmDelete !== null}
                 title="Delete Server"
                 message={`Are you sure you want to delete the server "${confirmDelete?.name}"? This action cannot be undone.`}
+                confirmText={confirmDelete?.name}
                 loading={deleteMutation.isPending}
                 onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}
                 onCancel={() => setConfirmDelete(null)}

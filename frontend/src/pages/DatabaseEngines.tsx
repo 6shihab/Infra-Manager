@@ -164,6 +164,7 @@ export function DatabaseEngines() {
                 open={confirmDelete !== null}
                 title="Delete Database Engine"
                 message={`Are you sure you want to delete the database engine "${confirmDelete?.name}"? This action cannot be undone.`}
+                confirmText={confirmDelete?.name}
                 loading={deleteMutation.isPending}
                 onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}
                 onCancel={() => setConfirmDelete(null)}

@@ -277,6 +277,7 @@ export function Groups() {
                 open={confirmDelete !== null}
                 title="Delete Group"
                 message={`Are you sure you want to delete the group "${confirmDelete?.name}"? This will remove all project access associated with it.`}
+                confirmText={confirmDelete?.name}
                 onConfirm={() => confirmDelete && handleDeleteGroup(confirmDelete.id)}
                 onCancel={() => setConfirmDelete(null)}
             />

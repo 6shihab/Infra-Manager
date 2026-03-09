@@ -241,6 +241,7 @@ export function Users() {
             open={confirmDelete !== null}
             title="Delete User"
             message={`Are you sure you want to delete the user "${confirmDelete?.name}"? This action cannot be undone.`}
+            confirmText={confirmDelete?.name}
             onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
             onCancel={() => setConfirmDelete(null)}
         />
