@@ -1,0 +1,24 @@
+{
+  "name": "infra-manager-desktop",
+  "version": "1.0.0",
+  "description": "Infra Manager — Windows Desktop App",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node launch.js",
+    "gen-icon": "node gen-icon.js",
+    "dist": "node gen-icon.js && npm run build && node -e \"const {execSync}=require('child_process'),env={...process.env};delete env.ELECTRON_RUN_AS_NODE;execSync('electron-builder --win',{stdio:'inherit',env})\"",
+    "build:all": "cd ../frontend && npm run build && cd ../desktop && npm run dist"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^20.17.10",
+    "cross-env": "^10.1.0",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  }
+}

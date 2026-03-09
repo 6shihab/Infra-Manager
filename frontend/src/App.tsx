@@ -1,10 +1,11 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { AutoLogout } from './components/AutoLogout';
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
+import api from './utils/api';
 
 const Login = React.lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -22,14 +23,35 @@ const Settings = React.lazy(() => import('./pages/Settings').then(module => ({ d
 const Users = React.lazy(() => import('./pages/Users').then(module => ({ default: module.Users })));
 const Groups = React.lazy(() => import('./pages/Groups').then(module => ({ default: module.Groups })));
 const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(module => ({ default: module.AuditLogs })));
+const ServerConfig = React.lazy(() => import('./pages/ServerConfig').then(module => ({ default: module.ServerConfig })));
+
+const Spinner = () => (
+  <div className="flex h-screen items-center justify-center p-4">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 function App() {
+  // In Electron, wait until we've read the backend URL from IPC and set it on the Axios instance.
+  // In the browser, this is immediately true (no IPC).
+  const [ready, setReady] = useState(!window.electronAPI);
+
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    window.electronAPI.getApiUrl().then(url => {
+      api.defaults.baseURL = url;
+      setReady(true);
+    });
+  }, []);
+
+  if (!ready) return <Spinner />;
+
   return (
     <AuthProvider>
       <NotificationsProvider>
       <AutoLogout />
       <Router>
-        <Suspense fallback={<div className="flex h-screen items-center justify-center p-4"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>}>
+        <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/login" element={<Login />} />
 
@@ -51,6 +73,7 @@ function App() {
                 <Route path="projects/:projectId/components/new" element={<ComponentForm />} />
                 <Route path="projects/:projectId/components/:componentId/edit" element={<ComponentForm />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="settings/connection" element={<ServerConfig />} />
                 <Route path="users" element={<Users />} />
                 <Route path="groups" element={<Groups />} />
                 <Route path="audit-logs" element={<AuditLogs />} />

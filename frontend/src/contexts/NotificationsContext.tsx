@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import api from '../utils/api';
 
 export interface Notification {
     id: string | number;
@@ -23,7 +24,6 @@ interface NotificationsContextType {
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
 const MAX_NOTIFICATIONS = 50;
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
     const { token } = useAuth();
@@ -47,7 +47,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             return;
         }
 
-        const url = `${API_URL}/notifications/stream?token=${encodeURIComponent(token)}`;
+        const baseUrl = (api.defaults.baseURL as string) || 'http://localhost:8000';
+        const url = `${baseUrl}/notifications/stream?token=${encodeURIComponent(token)}`;
         const es = new EventSource(url);
         esRef.current = es;
 
@@ -55,6 +56,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             try {
                 const data = JSON.parse(e.data);
                 addNotification(data);
+                // Trigger native OS notification in Electron for offline alerts
+                if (window.electronAPI && (data.type === 'SERVER_OFFLINE' || data.type === 'PROJECT_OFFLINE')) {
+                    const title = data.type === 'SERVER_OFFLINE' ? 'Server Offline' : 'Project Offline';
+                    window.electronAPI.showNativeNotification(title, data.resource_name || 'A resource went offline');
+                }
             } catch {
                 // malformed event — ignore
             }

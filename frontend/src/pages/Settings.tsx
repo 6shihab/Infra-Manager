@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Setting {
@@ -267,6 +268,27 @@ export function Settings() {
                         <button onClick={handleAdminPwChange} disabled={adminPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                             {adminPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Set Password</>}
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Desktop Connection Settings (Electron only) */}
+            {window.electronAPI && (
+                <div className="glass-panel p-6 rounded-xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Server className="h-6 w-6 text-brand-500" />
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Backend Connection</h2>
+                                <p className="text-sm text-gray-400">Configure the server URL this desktop app connects to.</p>
+                            </div>
+                        </div>
+                        <Link
+                            to="/settings/connection"
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            Configure
+                        </Link>
                     </div>
                 </div>
             )}
