@@ -38,7 +38,13 @@ export function Login() {
             login(response.data.access_token);
             navigate('/');
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+            if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+                setError('Connection timed out. The server took too long to respond.');
+            } else if (!err.response) {
+                setError('Cannot reach the server. Check your connection or server URL.');
+            } else {
+                setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+            }
         } finally {
             setLoading(false);
         }
