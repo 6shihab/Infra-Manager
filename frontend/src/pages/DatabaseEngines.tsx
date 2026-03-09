@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Database as DatabaseIcon, Trash2, Edit } from 'lucide-react';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function DatabaseEngines() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
     const queryClient = useQueryClient();
 
     const { data: engines, isLoading } = useQuery({
@@ -120,11 +122,7 @@ export function DatabaseEngines() {
                                         <Edit className="h-4 w-4" />
                                     </Link>
                                     <button
-                                        onClick={() => {
-                                            if (window.confirm("Are you sure you want to delete this database engine?")) {
-                                                deleteMutation.mutate(engine.id);
-                                            }
-                                        }}
+                                        onClick={() => setConfirmDelete({ id: engine.id, name: engine.name })}
                                         className="p-1.5 text-gray-400 hover:text-red-400 bg-black/50 hover:bg-red-500/20 rounded-lg transition-colors"
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -161,6 +159,15 @@ export function DatabaseEngines() {
                     ))}
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmDelete !== null}
+                title="Delete Database Engine"
+                message={`Are you sure you want to delete the database engine "${confirmDelete?.name}"? This action cannot be undone.`}
+                loading={deleteMutation.isPending}
+                onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

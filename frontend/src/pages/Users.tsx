@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface User {
     id: number;
@@ -16,6 +17,7 @@ export function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
 
     // Form state
     const [isAdding, setIsAdding] = useState(false);
@@ -64,14 +66,14 @@ export function Users() {
     };
 
     const handleDeleteUser = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this user?')) return;
-
         try {
             await api.delete(`/users/${id}`);
             setUsers(users.filter(u => u.id !== id));
+            setConfirmDelete(null);
         } catch (err: any) {
             const msg = err.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to delete user');
+            setConfirmDelete(null);
         }
     };
 
@@ -94,7 +96,7 @@ export function Users() {
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+        <><div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
@@ -212,7 +214,7 @@ export function Users() {
                                     </td>
                                     <td className="py-4 px-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
-                                            onClick={() => handleDeleteUser(u.id)}
+                                            onClick={() => setConfirmDelete({ id: u.id, name: u.full_name || u.email })}
                                             disabled={u.id === currentUser?.id}
                                             className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500 tooltip-trigger relative"
                                             title={u.id === currentUser?.id ? "Cannot delete yourself" : "Delete User"}
@@ -234,5 +236,14 @@ export function Users() {
                 </div>
             </div>
         </div>
+
+        <ConfirmDialog
+            open={confirmDelete !== null}
+            title="Delete User"
+            message={`Are you sure you want to delete the user "${confirmDelete?.name}"? This action cannot be undone.`}
+            onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
+            onCancel={() => setConfirmDelete(null)}
+        />
+        </>
     );
 }

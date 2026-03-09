@@ -5,9 +5,11 @@ import { Plus, Search, Server as ServerIcon, Trash2, Edit } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { toast } from 'react-hot-toast';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Servers() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
     const queryClient = useQueryClient();
 
     const { data: servers, isLoading } = useQuery({
@@ -121,11 +123,7 @@ export function Servers() {
                                         <Edit className="h-4 w-4" />
                                     </Link>
                                     <button
-                                        onClick={() => {
-                                            if (window.confirm("Are you sure you want to delete this server?")) {
-                                                deleteMutation.mutate(server.id);
-                                            }
-                                        }}
+                                        onClick={() => setConfirmDelete({ id: server.id, name: server.name })}
                                         className="p-1.5 text-gray-400 hover:text-red-400 bg-black/50 hover:bg-red-500/20 rounded-lg transition-colors"
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -173,6 +171,15 @@ export function Servers() {
                     ))}
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmDelete !== null}
+                title="Delete Server"
+                message={`Are you sure you want to delete the server "${confirmDelete?.name}"? This action cannot be undone.`}
+                loading={deleteMutation.isPending}
+                onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

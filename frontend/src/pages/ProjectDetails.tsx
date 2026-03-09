@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
     const [copied, setCopied] = useState(false);
@@ -90,8 +91,9 @@ export function ProjectDetails() {
     const [loading, setLoading] = useState(true);
 
     // Custom Modal State
-    const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: number | null, title: string } | null>(null);
+    const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: number | null, title: string, name: string } | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [confirmRemoveGroup, setConfirmRemoveGroup] = useState<{ id: number; name: string } | null>(null);
 
     // Access Control State
     const { user } = useAuth();
@@ -124,13 +126,14 @@ export function ProjectDetails() {
     };
 
     const handleRemoveGroup = async (groupId: number) => {
-        if (!confirm('Remove this group from the project?')) return;
         try {
             await api.delete(`/projects/${id}/groups/${groupId}`);
             const res = await api.get(`/projects/${id}`);
             setProject(res.data);
+            setConfirmRemoveGroup(null);
         } catch (err: any) {
             alert(err.response?.data?.detail || "Failed to remove group");
+            setConfirmRemoveGroup(null);
         }
     }
 
@@ -163,10 +166,10 @@ export function ProjectDetails() {
         }
     };
 
-    const handleDeleteProject = () => setDeleteConfig({ type: 'project', id: Number(id), title: 'Delete Project' });
-    const handleDeleteServer = (serverId: number) => setDeleteConfig({ type: 'server', id: serverId, title: 'Delete Server' });
-    const handleDeleteDatabase = (dbId: number) => setDeleteConfig({ type: 'database', id: dbId, title: 'Delete Database' });
-    const handleDeleteComponent = (compId: number) => setDeleteConfig({ type: 'component', id: compId, title: 'Delete Component' });
+    const handleDeleteProject = () => setDeleteConfig({ type: 'project', id: Number(id), title: 'Delete Project', name: project?.name || '' });
+    const handleDeleteServer = (serverId: number, serverName: string) => setDeleteConfig({ type: 'server', id: serverId, title: 'Remove Server', name: serverName });
+    const handleDeleteDatabase = (dbId: number, dbName: string) => setDeleteConfig({ type: 'database', id: dbId, title: 'Remove Database', name: dbName });
+    const handleDeleteComponent = (compId: number, compName: string) => setDeleteConfig({ type: 'component', id: compId, title: 'Delete Component', name: compName });
 
 
     useEffect(() => {
@@ -297,7 +300,7 @@ export function ProjectDetails() {
                                         <Link to={`/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Global Server">
                                             Edit Global
                                         </Link>
-                                        <button onClick={() => handleDeleteServer(server.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Detach Server from Project">
+                                        <button onClick={() => handleDeleteServer(server.id, server.name)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Detach Server from Project">
                                             <X className="w-4 h-4" />
                                             <span className="sr-only">Detach</span>
                                         </button>
@@ -360,7 +363,7 @@ export function ProjectDetails() {
                                         <Link to={`/databases/${db.id}/edit`} className="text-xs text-white hover:text-gray-300 px-2 py-1 bg-white/5 hover:bg-white/10 border border-dark-border rounded" title="Edit Global Database Engine">
                                             Edit Global
                                         </Link>
-                                        <button onClick={() => handleDeleteDatabase(db.id)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded" title="Detach DB from Project">
+                                        <button onClick={() => handleDeleteDatabase(db.id, db.name)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded" title="Detach DB from Project">
                                             Detach
                                         </button>
                                     </div>
@@ -409,7 +412,7 @@ export function ProjectDetails() {
                                     <Link to={`/projects/${project.id}/components/${comp.id}/edit`} className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-md transition" title="Edit Component">
                                         <Info className="w-4 h-4" />
                                     </Link>
-                                    <button onClick={() => handleDeleteComponent(comp.id)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition" title="Delete Component">
+                                    <button onClick={() => handleDeleteComponent(comp.id, comp.name)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition" title="Delete Component">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -492,7 +495,7 @@ export function ProjectDetails() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => handleRemoveGroup(pga.group_id)}
+                                            onClick={() => setConfirmRemoveGroup({ id: pga.group_id, name: groupName })}
                                             className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
                                             title="Revoke Access"
                                         >
@@ -510,34 +513,27 @@ export function ProjectDetails() {
                 </div>
             )}
 
-            {/* Custom Delete Confirmation Modal */}
-            {deleteConfig && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-dark-bg border border-dark-border rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold text-white mb-2">{deleteConfig.title}</h3>
-                        <p className="text-gray-400 text-sm mb-6">
-                            Are you absolutely sure you want to proceed? This action cannot be undone.
-                            {deleteConfig.type === 'project' && " This will permanently delete the project and all associated servers and databases."}
-                        </p>
-                        <div className="flex justify-end gap-3 mt-4">
-                            <button
-                                onClick={() => setDeleteConfig(null)}
-                                disabled={deleting}
-                                className="px-4 py-2 bg-transparent hover:bg-white/5 text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={executeDelete}
-                                disabled={deleting}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center disabled:opacity-50"
-                            >
-                                {deleting ? 'Deleting...' : 'Confirm Delete'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmDialog
+                open={deleteConfig !== null}
+                title={deleteConfig?.title ?? ''}
+                message={
+                    deleteConfig?.type === 'project'
+                        ? `Are you sure you want to delete the project "${deleteConfig.name}"? This action cannot be undone and will permanently delete all associated data.`
+                        : `Are you sure you want to remove "${deleteConfig?.name}" from this project? This action cannot be undone.`
+                }
+                loading={deleting}
+                onConfirm={executeDelete}
+                onCancel={() => setDeleteConfig(null)}
+            />
+
+            <ConfirmDialog
+                open={confirmRemoveGroup !== null}
+                title="Remove Group"
+                message={`Remove group "${confirmRemoveGroup?.name}" from this project?`}
+                confirmLabel="Remove"
+                onConfirm={() => confirmRemoveGroup && handleRemoveGroup(confirmRemoveGroup.id)}
+                onCancel={() => setConfirmRemoveGroup(null)}
+            />
         </div>
     );
 }

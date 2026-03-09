@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface Group {
     id: number;
@@ -31,6 +32,8 @@ export function Groups() {
     // Assign User State
     const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
     const [selectedUserToAdd, setSelectedUserToAdd] = useState<string>('');
+
+    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
 
     useEffect(() => {
         if (currentUser?.is_superuser) {
@@ -81,14 +84,14 @@ export function Groups() {
     };
 
     const handleDeleteGroup = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this group? This will remove all project access associated with it.')) return;
-
         try {
             await api.delete(`/groups/${id}`);
             setGroups(groups.filter(g => g.id !== id));
+            setConfirmDelete(null);
         } catch (err: any) {
             const msg = err.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to delete group');
+            setConfirmDelete(null);
         }
     };
 
@@ -190,7 +193,7 @@ export function Groups() {
                     <div key={group.id} className="glass-panel rounded-xl overflow-hidden hover:border-brand-500/30 transition-colors duration-300 flex flex-col group">
                         <div className="p-5 flex-1 relative">
                             <button
-                                onClick={() => handleDeleteGroup(group.id)}
+                                onClick={() => setConfirmDelete({ id: group.id, name: group.name })}
                                 className="absolute top-4 right-4 text-gray-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
                                 title="Delete Group"
                             >
@@ -269,6 +272,14 @@ export function Groups() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmDelete !== null}
+                title="Delete Group"
+                message={`Are you sure you want to delete the group "${confirmDelete?.name}"? This will remove all project access associated with it.`}
+                onConfirm={() => confirmDelete && handleDeleteGroup(confirmDelete.id)}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }
