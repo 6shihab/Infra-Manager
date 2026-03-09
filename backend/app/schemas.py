@@ -217,6 +217,20 @@ class ProjectDatabaseResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ProjectListResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    primary_domain: Optional[str] = None
+    environment: EnvironmentEnum
+    is_online: Optional[bool] = None
+    last_checked_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+    server_count: int = 0
+    database_count: int = 0
+    class Config:
+        from_attributes = True
+
 # --- Project Schemas ---
 class ProjectBase(BaseModel):
     name: str

@@ -57,8 +57,37 @@ export function Projects() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="h-7 w-28 bg-white/5 rounded-lg animate-pulse" />
+                        <div className="h-4 w-64 bg-white/5 rounded animate-pulse" />
+                    </div>
+                    <div className="h-9 w-28 bg-white/5 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex items-center space-x-4">
+                    <div className="h-9 flex-1 max-w-md bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-9 w-40 bg-white/5 rounded-lg animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="glass-panel rounded-xl overflow-hidden animate-pulse">
+                            <div className="p-5 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="h-5 w-16 bg-white/5 rounded-full" />
+                                    <div className="h-4 w-12 bg-white/5 rounded" />
+                                </div>
+                                <div className="h-5 w-3/4 bg-white/5 rounded" />
+                                <div className="space-y-1.5">
+                                    <div className="h-3 bg-white/5 rounded w-full" />
+                                    <div className="h-3 bg-white/5 rounded w-4/5" />
+                                </div>
+                                <div className="h-7 w-36 bg-white/5 rounded-md" />
+                            </div>
+                            <div className="px-5 py-3 bg-black/40 border-t border-dark-border h-10" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -155,11 +184,11 @@ export function Projects() {
                                 <div className="flex space-x-4">
                                     <div className="flex items-center" title="Servers">
                                         <Server className="h-4 w-4 mr-1.5 text-gray-500" />
-                                        {project.servers?.length || Math.floor(Math.random() * 5) + 1}
+                                        {project.server_count ?? 0}
                                     </div>
                                     <div className="flex items-center" title="Databases">
                                         <Database className="h-4 w-4 mr-1.5 text-gray-500" />
-                                        {project.databases?.length || Math.floor(Math.random() * 3) + 1}
+                                        {project.database_count ?? 0}
                                     </div>
                                 </div>
                                 <span className="text-brand-500 font-medium group-hover:underline text-xs">View Details &rarr;</span>

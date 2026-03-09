@@ -1,22 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Server, Database, FolderKanban, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
 export function Dashboard() {
-    const [projects, setProjects] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        api.get('/projects/')
-            .then(res => setProjects(res.data))
-            .catch(err => console.error("Failed to load generic data", err))
-            .finally(() => setLoading(false));
-    }, []);
+    const { data: projects = [], isLoading: loading } = useQuery({
+        queryKey: ['projects'],
+        queryFn: async () => {
+            const { data } = await api.get('/projects/');
+            return data;
+        }
+    });
 
     const totalProjects = projects.length;
-    const totalServers = projects.reduce((acc, proj) => acc + (proj.servers?.length || 0), 0);
-    const totalDatabases = projects.reduce((acc, proj) => acc + (proj.databases?.length || 0), 0);
+    const totalServers = projects.reduce((acc: number, proj: any) => acc + (proj.server_count || 0), 0);
+    const totalDatabases = projects.reduce((acc: number, proj: any) => acc + (proj.database_count || 0), 0);
 
     const stats = [
         { name: 'Total Projects', value: totalProjects.toString(), icon: FolderKanban, change: 'Active', trend: 'neutral' },
@@ -29,8 +27,40 @@ export function Dashboard() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="space-y-1">
+                    <div className="h-7 w-32 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-4 w-64 bg-white/5 rounded animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="glass-panel rounded-xl p-5 animate-pulse">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-2">
+                                    <div className="h-3 w-24 bg-white/5 rounded" />
+                                    <div className="h-7 w-12 bg-white/5 rounded" />
+                                </div>
+                                <div className="h-12 w-12 bg-white/5 rounded-lg" />
+                            </div>
+                            <div className="mt-4 h-3 w-16 bg-white/5 rounded" />
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="h-5 w-36 bg-white/5 rounded animate-pulse" />
+                        <div className="h-4 w-16 bg-white/5 rounded animate-pulse" />
+                    </div>
+                    <div className="glass-panel rounded-xl overflow-hidden animate-pulse">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="px-6 py-4 border-b border-dark-border flex items-center space-x-4">
+                                <div className="h-8 w-8 rounded-md bg-white/5 shrink-0" />
+                                <div className="h-4 w-40 bg-white/5 rounded" />
+                                <div className="h-5 w-16 bg-white/5 rounded-full ml-auto" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -114,7 +144,7 @@ export function Dashboard() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                         <div className="flex items-center">
                                             <Server className="h-4 w-4 mr-1.5 text-gray-500" />
-                                            {project.servers?.length || 0}
+                                            {project.server_count ?? 0}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

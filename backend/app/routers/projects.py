@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from datetime import datetime
 from fastapi_cache.decorator import cache
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -26,25 +26,58 @@ def create_project(request: Request, project: schemas.ProjectCreate, db: Session
     log_audit(db, current_user.id, "CREATED", "Project", db_project.name)
     return db_project
 
-@router.get("/", response_model=List[schemas.ProjectResponse])
+@router.get("/", response_model=List[schemas.ProjectListResponse])
 def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.is_superuser:
-        projects = db.query(models.Project).filter(
-            models.Project.is_deleted == False
-        ).offset(skip).limit(limit).all()
+        base_q = db.query(models.Project).filter(models.Project.is_deleted == False)
     else:
-        user_group_ids = [group.id for group in current_user.groups]
-        projects = db.query(models.Project).outerjoin(
-            models.ProjectGroupAccess,
-            models.ProjectGroupAccess.project_id == models.Project.id
-        ).filter(
-            models.Project.is_deleted == False,
-            or_(
-                models.ProjectGroupAccess.group_id.in_(user_group_ids),
-                models.Project.created_by == current_user.id
+        user_group_ids = [g.id for g in current_user.groups]
+        base_q = db.query(models.Project).filter(models.Project.is_deleted == False)
+        if user_group_ids:
+            base_q = base_q.filter(
+                or_(
+                    models.Project.created_by == current_user.id,
+                    models.Project.id.in_(
+                        db.query(models.ProjectGroupAccess.project_id).filter(
+                            models.ProjectGroupAccess.group_id.in_(user_group_ids)
+                        )
+                    )
+                )
             )
-        ).distinct().offset(skip).limit(limit).all()
-    return projects
+        else:
+            base_q = base_q.filter(models.Project.created_by == current_user.id)
+
+    projects = base_q.offset(skip).limit(limit).all()
+
+    if not projects:
+        return []
+
+    project_ids = [p.id for p in projects]
+
+    server_counts = dict(
+        db.query(models.ProjectServer.project_id, func.count(models.ProjectServer.server_id))
+        .filter(models.ProjectServer.project_id.in_(project_ids))
+        .group_by(models.ProjectServer.project_id)
+        .all()
+    )
+    db_counts = dict(
+        db.query(models.ProjectDatabase.project_id, func.count(models.ProjectDatabase.database_engine_id))
+        .filter(models.ProjectDatabase.project_id.in_(project_ids))
+        .group_by(models.ProjectDatabase.project_id)
+        .all()
+    )
+
+    return [
+        schemas.ProjectListResponse(
+            id=p.id, name=p.name, description=p.description,
+            primary_domain=p.primary_domain, environment=p.environment,
+            is_online=p.is_online, last_checked_at=p.last_checked_at,
+            created_by=p.created_by,
+            server_count=server_counts.get(p.id, 0),
+            database_count=db_counts.get(p.id, 0),
+        )
+        for p in projects
+    ]
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
 def read_project(project_id: int, db: Session = Depends(get_db), _: bool = Depends(require_project_role(["Viewer", "Editor", "Admin"]))):
