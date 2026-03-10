@@ -122,6 +122,16 @@ class ProjectGroupAccess(Base):
     project = relationship("Project", back_populates="group_accesses")
     group = relationship("Group", back_populates="project_accesses")
 
+class ProjectUserAccess(Base):
+    __tablename__ = "project_user_access"
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
+
+    project = relationship("Project", back_populates="user_accesses")
+    user = relationship("User")
+
 # --- Infrastructure Models ---
 
 class Project(Base):
@@ -150,6 +160,7 @@ class Project(Base):
     database_links = relationship("ProjectDatabase", back_populates="project", cascade="all, delete-orphan")
     components = relationship("Component", back_populates="project", cascade="all, delete-orphan")
     group_accesses = relationship("ProjectGroupAccess", back_populates="project", cascade="all, delete-orphan")
+    user_accesses = relationship("ProjectUserAccess", back_populates="project", cascade="all, delete-orphan")
     creator = relationship("User", back_populates="created_projects", foreign_keys=[created_by])
 
 class ProjectServer(Base):

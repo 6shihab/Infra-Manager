@@ -103,6 +103,19 @@ class ProjectGroupAccessResponse(ProjectGroupAccessBase):
     class Config:
         from_attributes = True
 
+class ProjectUserAccessBase(BaseModel):
+    project_id: int
+    user_id: int
+    access_level: AccessLevelEnum = AccessLevelEnum.VIEWER
+
+class ProjectUserAccessCreate(ProjectUserAccessBase):
+    pass
+
+class ProjectUserAccessResponse(ProjectUserAccessBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class EnvironmentEnum(str, Enum):
     dev = "Dev"
     staging = "Staging"
@@ -300,6 +313,7 @@ class ProjectResponse(ProjectBase):
     database_links: List[ProjectDatabaseResponse] = []
     components: List['ComponentResponse'] = []
     group_accesses: List[ProjectGroupAccessResponse] = []
+    user_accesses: List[ProjectUserAccessResponse] = []
     current_user_role: Optional[str] = None  # "Admin" | "Editor" | "Viewer" | None (superuser/creator get "Admin")
     class Config:
         from_attributes = True

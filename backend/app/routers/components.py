@@ -15,7 +15,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
-    """Raise 403 if user is not superuser, project creator, or Editor/Admin group member."""
+    """Raise 403 if user is not superuser, project creator, or Editor/Admin on this project."""
     if user.is_superuser:
         return
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
@@ -23,14 +23,43 @@ def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
         return
     user_group_ids = [g.id for g in user.groups]
     if user_group_ids:
-        access = db.query(models.ProjectGroupAccess).filter(
+        if db.query(models.ProjectGroupAccess).filter(
             models.ProjectGroupAccess.project_id == project_id,
             models.ProjectGroupAccess.group_id.in_(user_group_ids),
             models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
-        ).first()
-        if access:
+        ).first():
             return
+    if db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id == project_id,
+        models.ProjectUserAccess.user_id == user.id,
+        models.ProjectUserAccess.access_level.in_(["Editor", "Admin"]),
+    ).first():
+        return
     raise HTTPException(status_code=403, detail="Viewer role cannot modify components")
+
+
+def _require_admin(user: models.User, project_id: int, db: Session):
+    """Raise 403 if user is not superuser, project creator, or Admin on this project."""
+    if user.is_superuser:
+        return
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project and project.created_by == user.id:
+        return
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        if db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id == project_id,
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Admin"]),
+        ).first():
+            return
+    if db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id == project_id,
+        models.ProjectUserAccess.user_id == user.id,
+        models.ProjectUserAccess.access_level.in_(["Admin"]),
+    ).first():
+        return
+    raise HTTPException(status_code=403, detail="Admin role required to delete components")
 
 @router.get("/", response_model=List[schemas.ComponentResponse])
 def read_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -86,7 +115,7 @@ def delete_component(component_id: int, db: Session = Depends(get_db), current_u
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
-    _require_editor_or_admin(current_user, db_component.project_id, db)
+    _require_admin(current_user, db_component.project_id, db)
 
     comp_name = db_component.name
     db_component.is_deleted = True

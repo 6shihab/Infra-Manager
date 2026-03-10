@@ -26,16 +26,22 @@ def _get_user_project_role(db: Session, user: models.User, project_id: int) -> s
     if project and project.created_by == user.id:
         return "Admin"
     user_group_ids = [g.id for g in user.groups]
-    if not user_group_ids:
-        return "Viewer"
-    # Role priority: Admin > Editor > Viewer
+    # Role priority: Admin > Editor > Viewer — check both group and direct user access
     for role in ("Admin", "Editor", "Viewer"):
-        access = db.query(models.ProjectGroupAccess).filter(
-            models.ProjectGroupAccess.project_id == project_id,
-            models.ProjectGroupAccess.group_id.in_(user_group_ids),
-            models.ProjectGroupAccess.access_level == role,
+        if user_group_ids:
+            access = db.query(models.ProjectGroupAccess).filter(
+                models.ProjectGroupAccess.project_id == project_id,
+                models.ProjectGroupAccess.group_id.in_(user_group_ids),
+                models.ProjectGroupAccess.access_level == role,
+            ).first()
+            if access:
+                return role
+        direct = db.query(models.ProjectUserAccess).filter(
+            models.ProjectUserAccess.project_id == project_id,
+            models.ProjectUserAccess.user_id == user.id,
+            models.ProjectUserAccess.access_level == role,
         ).first()
-        if access:
+        if direct:
             return role
     return "Viewer"
 
@@ -59,6 +65,11 @@ def _project_member_ids(db: Session, project_id: int) -> list[int]:
         ).distinct().all()
         user_ids.update(r[0] for r in rows)
 
+    direct_users = db.query(models.ProjectUserAccess.user_id).filter(
+        models.ProjectUserAccess.project_id == project_id
+    ).all()
+    user_ids.update(r[0] for r in direct_users)
+
     return list(user_ids)
 
 @router.post("/", response_model=schemas.ProjectResponse)
@@ -79,6 +90,9 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     else:
         user_group_ids = [g.id for g in current_user.groups]
         base_q = db.query(models.Project).filter(models.Project.is_deleted == False)
+        direct_project_ids = db.query(models.ProjectUserAccess.project_id).filter(
+            models.ProjectUserAccess.user_id == current_user.id
+        )
         if user_group_ids:
             base_q = base_q.filter(
                 or_(
@@ -87,11 +101,17 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
                         db.query(models.ProjectGroupAccess.project_id).filter(
                             models.ProjectGroupAccess.group_id.in_(user_group_ids)
                         )
-                    )
+                    ),
+                    models.Project.id.in_(direct_project_ids)
                 )
             )
         else:
-            base_q = base_q.filter(models.Project.created_by == current_user.id)
+            base_q = base_q.filter(
+                or_(
+                    models.Project.created_by == current_user.id,
+                    models.Project.id.in_(direct_project_ids)
+                )
+            )
 
     projects = base_q.offset(skip).limit(limit).all()
 
@@ -320,4 +340,54 @@ def remove_database_from_project(project_id: int, database_engine_id: int, db: S
     db.commit()
     log_audit(db, current_user.id, "DETACHED", "DatabaseEngine", engine_name,
               target_user_ids=member_ids)
+    return {"status": "success"}
+
+@router.post("/{project_id}/users/{user_id}", response_model=schemas.ProjectUserAccessResponse)
+def add_user_to_project(project_id: int, user_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id == project_id,
+        models.ProjectUserAccess.user_id == user_id
+    ).first()
+
+    if existing:
+        existing.access_level = access_level
+        db.commit()
+        db.refresh(existing)
+        log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name,
+                  target_user_ids=[user_id])
+        return existing
+
+    new_access = models.ProjectUserAccess(project_id=project_id, user_id=user_id, access_level=access_level)
+    db.add(new_access)
+    db.commit()
+    db.refresh(new_access)
+    log_audit(db, current_user.id, "GRANTED_ACCESS", "Project", project.name,
+              target_user_ids=[user_id])
+    return new_access
+
+@router.delete("/{project_id}/users/{user_id}")
+def remove_user_from_project(project_id: int, user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+    access = db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id == project_id,
+        models.ProjectUserAccess.user_id == user_id
+    ).first()
+
+    if not access:
+        raise HTTPException(status_code=404, detail="User access not found")
+
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project_name = project.name if project else str(project_id)
+
+    db.delete(access)
+    db.commit()
+    log_audit(db, current_user.id, "REVOKED_ACCESS", "Project", project_name,
+              target_user_ids=[user_id])
     return {"status": "success"}

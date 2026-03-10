@@ -43,16 +43,21 @@ def _can_edit_database(user: models.User, db_engine: models.DatabaseEngine, db: 
         return True
     if db_engine.created_by == user.id:
         return True
-    user_group_ids = [g.id for g in user.groups]
-    if not user_group_ids:
-        return False
     linked_project_ids = _get_linked_project_ids_db(db_engine.id, db)
     if not linked_project_ids:
         return False
-    return db.query(models.ProjectGroupAccess).filter(
-        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
-        models.ProjectGroupAccess.group_id.in_(user_group_ids),
-        models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        if db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+        ).first():
+            return True
+    return db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id.in_(linked_project_ids),
+        models.ProjectUserAccess.user_id == user.id,
+        models.ProjectUserAccess.access_level.in_(["Editor", "Admin"]),
     ).first() is not None
 
 
@@ -62,16 +67,21 @@ def _can_delete_database(user: models.User, db_engine: models.DatabaseEngine, db
         return True
     if db_engine.created_by == user.id:
         return True
-    user_group_ids = [g.id for g in user.groups]
-    if not user_group_ids:
-        return False
     linked_project_ids = _get_linked_project_ids_db(db_engine.id, db)
     if not linked_project_ids:
         return False
-    return db.query(models.ProjectGroupAccess).filter(
-        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
-        models.ProjectGroupAccess.group_id.in_(user_group_ids),
-        models.ProjectGroupAccess.access_level.in_(["Admin"]),
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        if db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Admin"]),
+        ).first():
+            return True
+    return db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.project_id.in_(linked_project_ids),
+        models.ProjectUserAccess.user_id == user.id,
+        models.ProjectUserAccess.access_level.in_(["Admin"]),
     ).first() is not None
 
 
@@ -100,6 +110,10 @@ def read_databases(
             models.ProjectGroupAccess.group_id.in_(user_group_ids)
         )
         project_ids_q = project_ids_q.union(via_group_q)
+    via_direct_user_q = db.query(models.ProjectUserAccess.project_id).filter(
+        models.ProjectUserAccess.user_id == current_user.id
+    )
+    project_ids_q = project_ids_q.union(via_direct_user_q)
 
     # Engines created by this user
     owned = db.query(models.DatabaseEngine.id).filter(models.DatabaseEngine.created_by == current_user.id)

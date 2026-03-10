@@ -78,6 +78,15 @@ def get_accessible_project_ids(user: models.User, db: Session) -> set[int] | Non
         ).all()
         accessible.update(r.project_id for r in via_group)
 
+    via_user = db.query(models.ProjectUserAccess.project_id).join(
+        models.Project,
+        models.Project.id == models.ProjectUserAccess.project_id
+    ).filter(
+        models.ProjectUserAccess.user_id == user.id,
+        models.Project.is_deleted == False,
+    ).all()
+    accessible.update(r.project_id for r in via_user)
+
     return accessible
 
 
@@ -100,17 +109,22 @@ def require_project_role(required_roles: list[str]):
 
         # Check group-based access
         user_group_ids = [group.id for group in current_user.groups]
-        if not user_group_ids:
-            logger.warning("403 Forbidden: user=%s has no group membership", current_user.id)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+        if user_group_ids:
+            access = db.query(models.ProjectGroupAccess).filter(
+                models.ProjectGroupAccess.project_id == project_id,
+                models.ProjectGroupAccess.group_id.in_(user_group_ids),
+                models.ProjectGroupAccess.access_level.in_(required_roles)
+            ).first()
+            if access:
+                return True
 
-        access = db.query(models.ProjectGroupAccess).filter(
-            models.ProjectGroupAccess.project_id == project_id,
-            models.ProjectGroupAccess.group_id.in_(user_group_ids),
-            models.ProjectGroupAccess.access_level.in_(required_roles)
+        # Check direct user access
+        direct = db.query(models.ProjectUserAccess).filter(
+            models.ProjectUserAccess.project_id == project_id,
+            models.ProjectUserAccess.user_id == current_user.id,
+            models.ProjectUserAccess.access_level.in_(required_roles)
         ).first()
-
-        if access:
+        if direct:
             return True
 
         logger.warning("403 Forbidden: user=%s has no access to project=%s", current_user.id, project_id)
