@@ -397,7 +397,7 @@ export function ProjectDetails() {
 
                 {project.database_links?.length === 0 && <p className="text-gray-500 text-sm">No databases attached to this project.</p>}
 
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {project.database_links?.map((link: any) => {
                         const db = link.database_engine;
                         return (
@@ -407,6 +407,10 @@ export function ProjectDetails() {
                                         <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
                                             <Database className="w-4 h-4 text-gray-400" />
                                             {db.name}
+                                        </div>
+                                        <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/dbname mb-1">
+                                            {link.db_name}
+                                            <CopyButton text={link.db_name} className="opacity-0 group-hover/dbname:opacity-100" />
                                         </div>
                                         <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
                                             {db.host}{db.port ? `:${db.port}` : ''}
