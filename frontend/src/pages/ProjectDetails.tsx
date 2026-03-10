@@ -369,14 +369,13 @@ export function ProjectDetails() {
                             <div key={link.database_engine_id} className="glass-panel p-5 rounded-xl">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                                     <div>
-                                        <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2 group/dbn">
-                                            {link.db_name || 'Unnamed DB'}
-                                            {link.db_name && <CopyButton text={link.db_name} className="opacity-0 group-hover/dbn:opacity-100" />}
+                                        <div className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                                            <Database className="w-4 h-4 text-gray-400" />
+                                            {db.name}
                                         </div>
                                         <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
-                                            <span className="text-white bg-white/5 px-2 py-0.5 rounded text-xs items-center gap-1 font-sans mr-2 border border-dark-border inline-flex"><Database className="w-3 h-3" /> {db.name}</span>
-                                            {db.host}:{db.port}
-                                            <CopyButton text={`${db.host}:${db.port}`} className="opacity-0 group-hover/host:opacity-100" />
+                                            {db.host}{db.port ? `:${db.port}` : ''}
+                                            <CopyButton text={db.port ? `${db.host}:${db.port}` : db.host} className="opacity-0 group-hover/host:opacity-100" />
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
