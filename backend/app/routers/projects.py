@@ -133,12 +133,17 @@ def read_project(project_id: int, db: Session = Depends(get_db), current_user: m
     role = _get_user_project_role(db, current_user, project_id)
     # Attach role to the ORM object temporarily for the response serializer
     db_project.current_user_role = role
-    for link in db_project.server_links:
+    active_server_links = [l for l in db_project.server_links if not l.server.is_deleted]
+    for link in active_server_links:
         link.server.can_edit = _can_edit_server(current_user, link.server, db)
         link.server.can_delete = _can_delete_server(current_user, link.server, db)
-    for link in db_project.database_links:
+    db_project.server_links = active_server_links
+    active_db_links = [l for l in db_project.database_links if not l.database_engine.is_deleted]
+    for link in active_db_links:
         link.database_engine.can_edit = _can_edit_database(current_user, link.database_engine, db)
         link.database_engine.can_delete = _can_delete_database(current_user, link.database_engine, db)
+    db_project.database_links = active_db_links
+    db_project.components = [c for c in db_project.components if not c.is_deleted]
     return db_project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
