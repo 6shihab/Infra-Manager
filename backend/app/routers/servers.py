@@ -29,6 +29,52 @@ def _can_access_server(user: models.User, server: models.Server, db: Session) ->
     ).first() is not None
 
 
+def _get_linked_project_ids(server_id: int, db: Session):
+    return [
+        r.project_id for r in db.query(models.ProjectServer).filter(
+            models.ProjectServer.server_id == server_id
+        ).all()
+    ]
+
+
+def _can_edit_server(user: models.User, server: models.Server, db: Session) -> bool:
+    """Superuser, creator, or Editor/Admin on a linked project."""
+    if user.is_superuser:
+        return True
+    if server.created_by == user.id:
+        return True
+    user_group_ids = [g.id for g in user.groups]
+    if not user_group_ids:
+        return False
+    linked_project_ids = _get_linked_project_ids(server.id, db)
+    if not linked_project_ids:
+        return False
+    return db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+        models.ProjectGroupAccess.group_id.in_(user_group_ids),
+        models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+    ).first() is not None
+
+
+def _can_delete_server(user: models.User, server: models.Server, db: Session) -> bool:
+    """Superuser, creator, or Admin (not Editor) on a linked project."""
+    if user.is_superuser:
+        return True
+    if server.created_by == user.id:
+        return True
+    user_group_ids = [g.id for g in user.groups]
+    if not user_group_ids:
+        return False
+    linked_project_ids = _get_linked_project_ids(server.id, db)
+    if not linked_project_ids:
+        return False
+    return db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+        models.ProjectGroupAccess.group_id.in_(user_group_ids),
+        models.ProjectGroupAccess.access_level.in_(["Admin"]),
+    ).first() is not None
+
+
 @router.get("/", response_model=List[schemas.ServerListResponse])
 def read_servers(
     skip: int = 0,
@@ -37,7 +83,11 @@ def read_servers(
     current_user: models.User = Depends(get_current_user),
 ):
     if current_user.is_superuser:
-        return db.query(models.Server).filter(models.Server.is_deleted == False).offset(skip).limit(limit).all()
+        servers = db.query(models.Server).filter(models.Server.is_deleted == False).offset(skip).limit(limit).all()
+        for s in servers:
+            s.can_edit = True
+            s.can_delete = True
+        return servers
 
     # Build accessible project IDs in a single subquery (avoids extra round-trips)
     user_group_ids = [g.id for g in current_user.groups]
@@ -60,13 +110,17 @@ def read_servers(
     ).distinct()
     all_ids = owned.union(via_project)
 
-    return (
+    servers = (
         db.query(models.Server)
         .filter(models.Server.id.in_(all_ids), models.Server.is_deleted == False)
         .offset(skip)
         .limit(limit)
         .all()
     )
+    for s in servers:
+        s.can_edit = _can_edit_server(current_user, s, db)
+        s.can_delete = _can_delete_server(current_user, s, db)
+    return servers
 
 
 @router.post("/", response_model=schemas.ServerResponse)
@@ -113,7 +167,7 @@ def update_server(
     ).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
-    if not _can_access_server(current_user, db_server, db):
+    if not _can_edit_server(current_user, db_server, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
     update_data = server.model_dump(exclude_unset=True)
@@ -137,7 +191,7 @@ def delete_server(
     ).first()
     if db_server is None:
         raise HTTPException(status_code=404, detail="Server not found")
-    if not _can_access_server(current_user, db_server, db):
+    if not _can_delete_server(current_user, db_server, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
     server_name = db_server.name

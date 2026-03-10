@@ -167,6 +167,8 @@ class ServerResponse(ServerBase):
     id: int
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
+    can_edit: bool = False
+    can_delete: bool = False
     class Config:
         from_attributes = True
 
@@ -179,6 +181,9 @@ class ServerListResponse(BaseModel):
     username: Optional[str] = None
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+    can_edit: bool = False
+    can_delete: bool = False
     class Config:
         from_attributes = True
 
@@ -221,6 +226,8 @@ class DatabaseEngineUpdate(BaseModel):
 
 class DatabaseEngineResponse(DatabaseEngineBase):
     id: int
+    can_edit: bool = False
+    can_delete: bool = False
     class Config:
         from_attributes = True
 
@@ -232,6 +239,9 @@ class DatabaseEngineListResponse(BaseModel):
     port: Optional[int] = None
     connection_string_format: Optional[str] = None
     username: Optional[str] = None
+    created_by: Optional[int] = None
+    can_edit: bool = False
+    can_delete: bool = False
     class Config:
         from_attributes = True
 
@@ -290,6 +300,7 @@ class ProjectResponse(ProjectBase):
     database_links: List[ProjectDatabaseResponse] = []
     components: List['ComponentResponse'] = []
     group_accesses: List[ProjectGroupAccessResponse] = []
+    current_user_role: Optional[str] = None  # "Admin" | "Editor" | "Viewer" | None (superuser/creator get "Admin")
     class Config:
         from_attributes = True
 

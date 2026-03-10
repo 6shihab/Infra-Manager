@@ -29,6 +29,52 @@ def _can_access_database(user: models.User, db_engine: models.DatabaseEngine, db
     ).first() is not None
 
 
+def _get_linked_project_ids_db(engine_id: int, db: Session):
+    return [
+        r.project_id for r in db.query(models.ProjectDatabase).filter(
+            models.ProjectDatabase.database_engine_id == engine_id
+        ).all()
+    ]
+
+
+def _can_edit_database(user: models.User, db_engine: models.DatabaseEngine, db: Session) -> bool:
+    """Superuser, creator, or Editor/Admin on a linked project."""
+    if user.is_superuser:
+        return True
+    if db_engine.created_by == user.id:
+        return True
+    user_group_ids = [g.id for g in user.groups]
+    if not user_group_ids:
+        return False
+    linked_project_ids = _get_linked_project_ids_db(db_engine.id, db)
+    if not linked_project_ids:
+        return False
+    return db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+        models.ProjectGroupAccess.group_id.in_(user_group_ids),
+        models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+    ).first() is not None
+
+
+def _can_delete_database(user: models.User, db_engine: models.DatabaseEngine, db: Session) -> bool:
+    """Superuser, creator, or Admin (not Editor) on a linked project."""
+    if user.is_superuser:
+        return True
+    if db_engine.created_by == user.id:
+        return True
+    user_group_ids = [g.id for g in user.groups]
+    if not user_group_ids:
+        return False
+    linked_project_ids = _get_linked_project_ids_db(db_engine.id, db)
+    if not linked_project_ids:
+        return False
+    return db.query(models.ProjectGroupAccess).filter(
+        models.ProjectGroupAccess.project_id.in_(linked_project_ids),
+        models.ProjectGroupAccess.group_id.in_(user_group_ids),
+        models.ProjectGroupAccess.access_level.in_(["Admin"]),
+    ).first() is not None
+
+
 @router.get("/", response_model=List[schemas.DatabaseEngineListResponse])
 def read_databases(
     skip: int = 0,
@@ -37,7 +83,11 @@ def read_databases(
     current_user: models.User = Depends(get_current_user),
 ):
     if current_user.is_superuser:
-        return db.query(models.DatabaseEngine).filter(models.DatabaseEngine.is_deleted == False).offset(skip).limit(limit).all()
+        engines = db.query(models.DatabaseEngine).filter(models.DatabaseEngine.is_deleted == False).offset(skip).limit(limit).all()
+        for e in engines:
+            e.can_edit = True
+            e.can_delete = True
+        return engines
 
     # Build accessible project IDs in a single subquery (avoids extra round-trips)
     user_group_ids = [g.id for g in current_user.groups]
@@ -60,13 +110,17 @@ def read_databases(
     ).distinct()
     all_ids = owned.union(via_project)
 
-    return (
+    engines = (
         db.query(models.DatabaseEngine)
         .filter(models.DatabaseEngine.id.in_(all_ids), models.DatabaseEngine.is_deleted == False)
         .offset(skip)
         .limit(limit)
         .all()
     )
+    for e in engines:
+        e.can_edit = _can_edit_database(current_user, e, db)
+        e.can_delete = _can_delete_database(current_user, e, db)
+    return engines
 
 
 @router.post("/", response_model=schemas.DatabaseEngineResponse)
@@ -113,7 +167,7 @@ def update_database(
     ).first()
     if db_database is None:
         raise HTTPException(status_code=404, detail="DatabaseEngine not found")
-    if not _can_access_database(current_user, db_database, db):
+    if not _can_edit_database(current_user, db_database, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
     update_data = database.model_dump(exclude_unset=True)
@@ -137,7 +191,7 @@ def delete_database(
     ).first()
     if db_database is None:
         raise HTTPException(status_code=404, detail="DatabaseEngine not found")
-    if not _can_access_database(current_user, db_database, db):
+    if not _can_delete_database(current_user, db_database, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
     db_name = db_database.name

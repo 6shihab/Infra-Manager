@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
-from app.dependencies import get_current_user, get_accessible_project_ids
+from app.dependencies import get_current_user, get_accessible_project_ids, require_project_role
 from app.audit import log_audit
 
 router = APIRouter(prefix="/components", tags=["components"], dependencies=[Depends(get_current_user)])
@@ -12,6 +12,25 @@ router = APIRouter(prefix="/components", tags=["components"], dependencies=[Depe
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
+
+
+def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
+    """Raise 403 if user is not superuser, project creator, or Editor/Admin group member."""
+    if user.is_superuser:
+        return
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project and project.created_by == user.id:
+        return
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        access = db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id == project_id,
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+        ).first()
+        if access:
+            return
+    raise HTTPException(status_code=403, detail="Viewer role cannot modify components")
 
 @router.get("/", response_model=List[schemas.ComponentResponse])
 def read_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -30,7 +49,8 @@ def create_component(request: Request, component: schemas.ComponentCreate, db: S
     accessible = get_accessible_project_ids(current_user, db)
     if accessible is not None and component.project_id not in accessible:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
+    _require_editor_or_admin(current_user, component.project_id, db)
+
     db_component = models.Component(**component.model_dump())
     db.add(db_component)
     db.commit()
@@ -56,7 +76,8 @@ def update_component(component_id: int, component: schemas.ComponentUpdate, db: 
     accessible = get_accessible_project_ids(current_user, db)
     if accessible is not None and db_component.project_id not in accessible:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
+    _require_editor_or_admin(current_user, db_component.project_id, db)
+
     update_data = component.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_component, key, value)
@@ -74,6 +95,7 @@ def delete_component(component_id: int, db: Session = Depends(get_db), current_u
     accessible = get_accessible_project_ids(current_user, db)
     if accessible is not None and db_component.project_id not in accessible:
         raise HTTPException(status_code=403, detail="Not enough permissions")
+    _require_editor_or_admin(current_user, db_component.project_id, db)
     
     comp_name = db_component.name
     db_component.is_deleted = True

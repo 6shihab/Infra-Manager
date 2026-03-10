@@ -8,12 +8,36 @@ from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_active_superuser, require_project_role
 from app.audit import log_audit
+from app.routers.servers import _can_edit_server, _can_delete_server
+from app.routers.databases import _can_edit_database, _can_delete_database
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
+
+
+def _get_user_project_role(db: Session, user: models.User, project_id: int) -> str:
+    """Return the effective role for a user on a project: Admin, Editor, or Viewer."""
+    if user.is_superuser:
+        return "Admin"
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if project and project.created_by == user.id:
+        return "Admin"
+    user_group_ids = [g.id for g in user.groups]
+    if not user_group_ids:
+        return "Viewer"
+    # Role priority: Admin > Editor > Viewer
+    for role in ("Admin", "Editor", "Viewer"):
+        access = db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.project_id == project_id,
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level == role,
+        ).first()
+        if access:
+            return role
+    return "Viewer"
 
 
 def _project_member_ids(db: Session, project_id: int) -> list[int]:
@@ -102,10 +126,19 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     ]
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
-def read_project(project_id: int, db: Session = Depends(get_db), _: bool = Depends(require_project_role(["Viewer", "Editor", "Admin"]))):
+def read_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Viewer", "Editor", "Admin"]))):
     db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+    role = _get_user_project_role(db, current_user, project_id)
+    # Attach role to the ORM object temporarily for the response serializer
+    db_project.current_user_role = role
+    for link in db_project.server_links:
+        link.server.can_edit = _can_edit_server(current_user, link.server, db)
+        link.server.can_delete = _can_delete_server(current_user, link.server, db)
+    for link in db_project.database_links:
+        link.database_engine.can_edit = _can_edit_database(current_user, link.database_engine, db)
+        link.database_engine.can_delete = _can_delete_database(current_user, link.database_engine, db)
     return db_project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)

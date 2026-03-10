@@ -11,6 +11,8 @@ export function Servers() {
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
     const queryClient = useQueryClient();
+    const canEdit = (server: any) => server.can_edit === true;
+    const canDelete = (server: any) => server.can_delete === true;
 
     const { data: servers, isLoading } = useQuery({
         queryKey: ['servers'],
@@ -118,17 +120,23 @@ export function Servers() {
                     {filteredServers.map((server: any) => (
                         <div key={server.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden border border-dark-border hover:border-brand-500/50 transition-all duration-300">
                             <div className="p-5 flex-1 relative">
-                                <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Link to={`/servers/${server.id}/edit`} className="p-1.5 text-gray-400 hover:text-white bg-black/50 hover:bg-brand-500/20 rounded-lg transition-colors">
-                                        <Edit className="h-4 w-4" />
-                                    </Link>
-                                    <button
-                                        onClick={() => setConfirmDelete({ id: server.id, name: server.name })}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 bg-black/50 hover:bg-red-500/20 rounded-lg transition-colors"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
+                                {(canEdit(server) || canDelete(server)) && (
+                                    <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {canEdit(server) && (
+                                            <Link to={`/servers/${server.id}/edit`} className="p-1.5 text-gray-400 hover:text-white bg-black/50 hover:bg-brand-500/20 rounded-lg transition-colors">
+                                                <Edit className="h-4 w-4" />
+                                            </Link>
+                                        )}
+                                        {canDelete(server) && (
+                                            <button
+                                                onClick={() => setConfirmDelete({ id: server.id, name: server.name })}
+                                                className="p-1.5 text-gray-400 hover:text-red-400 bg-black/50 hover:bg-red-500/20 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="flex items-center mb-4">
                                     <div className="p-2.5 bg-brand-500/10 rounded-lg mr-4">

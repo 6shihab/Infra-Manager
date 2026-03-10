@@ -206,6 +206,16 @@ export function ProjectDetails() {
 
     if (!project) return <div className="text-white">Project not found</div>;
 
+    const userRole: string | null = project.current_user_role ?? null;
+    const canEdit = user?.is_superuser || userRole === 'Admin' || userRole === 'Editor';
+    const canDelete = user?.is_superuser || userRole === 'Admin';
+
+    const roleBadgeClass: Record<string, string> = {
+        Admin: 'bg-red-500/10 text-red-400 border border-red-500/20',
+        Editor: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+        Viewer: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+    };
+
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-300">
             <Link to="/projects" className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
@@ -224,6 +234,11 @@ export function ProjectDetails() {
                             }`}>
                             {project.environment}
                         </span>
+                        {!user?.is_superuser && userRole && (
+                            <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${roleBadgeClass[userRole] ?? roleBadgeClass.Viewer}`}>
+                                {userRole}
+                            </span>
+                        )}
                     </div>
                     <p className="text-base text-gray-400 max-w-2xl">{project.description}</p>
 
@@ -251,12 +266,16 @@ export function ProjectDetails() {
                 </div>
 
                 <div className="flex gap-3">
-                    <button onClick={handleDeleteProject} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500 hover:text-red-400 text-sm font-medium rounded-lg hover:bg-red-500/20 transition">
-                        Delete Project
-                    </button>
-                    <Link to={`/projects/${project.id}/edit`} className="px-4 py-2 bg-white/5 border border-dark-border text-white text-sm font-medium rounded-lg hover:bg-white/10 transition">
-                        Edit Project
-                    </Link>
+                    {canDelete && (
+                        <button onClick={handleDeleteProject} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500 hover:text-red-400 text-sm font-medium rounded-lg hover:bg-red-500/20 transition">
+                            Delete Project
+                        </button>
+                    )}
+                    {canEdit && (
+                        <Link to={`/projects/${project.id}/edit`} className="px-4 py-2 bg-white/5 border border-dark-border text-white text-sm font-medium rounded-lg hover:bg-white/10 transition">
+                            Edit Project
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -269,7 +288,7 @@ export function ProjectDetails() {
                         <Server className="mr-2 h-5 w-5 text-brand-500" />
                         Compute Instances ({project.server_links?.length || 0})
                     </h2>
-                    <Link to={`/projects/${project.id}/servers/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Server</Link>
+                    {canEdit && <Link to={`/projects/${project.id}/servers/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Server</Link>}
                 </div>
 
                 {project.server_links?.length === 0 && <p className="text-gray-500 text-sm">No servers attached to this project.</p>}
@@ -297,13 +316,17 @@ export function ProjectDetails() {
                                         <div className={`p-2 rounded-md cursor-help ${server.is_online === true ? 'bg-emerald-500/10 text-emerald-500' : server.is_online === false ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-gray-500'}`} title={server.is_online === true ? 'Status: Online' : server.is_online === false ? 'Status: Offline' : server.last_checked_at ? 'Status: Unknown' : 'Status: Pending Check'}>
                                             <Activity className={`w-4 h-4 ${(server.is_online !== null && server.is_online !== false) ? 'animate-pulse' : ''}`} />
                                         </div>
-                                        <Link to={`/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Global Server">
-                                            Edit Global
-                                        </Link>
-                                        <button onClick={() => handleDeleteServer(server.id, server.name)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Detach Server from Project">
-                                            <X className="w-4 h-4" />
-                                            <span className="sr-only">Detach</span>
-                                        </button>
+                                        {server.can_edit && (
+                                            <Link to={`/servers/${server.id}/edit`} className="text-xs px-2 py-1 bg-white/5 hover:bg-white/10 text-white rounded-md transition border border-dark-border" title="Edit Global Server">
+                                                Edit Global
+                                            </Link>
+                                        )}
+                                        {canEdit && (
+                                            <button onClick={() => handleDeleteServer(server.id, server.name)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors" title="Detach Server from Project">
+                                                <X className="w-4 h-4" />
+                                                <span className="sr-only">Detach</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -334,7 +357,7 @@ export function ProjectDetails() {
                         <Database className="mr-2 h-5 w-5 text-brand-500" />
                         Databases ({project.database_links?.length || 0})
                     </h2>
-                    <Link to={`/projects/${project.id}/databases/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Database</Link>
+                    {canEdit && <Link to={`/projects/${project.id}/databases/new`} className="text-sm text-brand-500 hover:text-brand-400">Attach Database</Link>}
                 </div>
 
                 {project.database_links?.length === 0 && <p className="text-gray-500 text-sm">No databases attached to this project.</p>}
@@ -360,12 +383,16 @@ export function ProjectDetails() {
                                         <div className="px-3 py-1 bg-brand-500/10 text-brand-400 rounded-lg text-sm font-medium border border-brand-500/20">
                                             {db.engine}
                                         </div>
-                                        <Link to={`/databases/${db.id}/edit`} className="text-xs text-white hover:text-gray-300 px-2 py-1 bg-white/5 hover:bg-white/10 border border-dark-border rounded" title="Edit Global Database Engine">
-                                            Edit Global
-                                        </Link>
-                                        <button onClick={() => handleDeleteDatabase(db.id, db.name)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded" title="Detach DB from Project">
-                                            Detach
-                                        </button>
+                                        {db.can_edit && (
+                                            <Link to={`/databases/${db.id}/edit`} className="text-xs text-white hover:text-gray-300 px-2 py-1 bg-white/5 hover:bg-white/10 border border-dark-border rounded" title="Edit Global Database Engine">
+                                                Edit Global
+                                            </Link>
+                                        )}
+                                        {canEdit && (
+                                            <button onClick={() => handleDeleteDatabase(db.id, db.name)} className="text-xs text-red-500 hover:text-red-400 p-1 bg-red-500/10 hover:bg-red-500/20 rounded" title="Detach DB from Project">
+                                                Detach
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -395,7 +422,7 @@ export function ProjectDetails() {
                         <Layers className="mr-2 h-5 w-5 text-brand-500" />
                         Other Infrastructure ({project.components?.length || 0})
                     </h2>
-                    <Link to={`/projects/${project.id}/components/new`} className="text-sm text-brand-500 hover:text-brand-400">Add Component</Link>
+                    {canEdit && <Link to={`/projects/${project.id}/components/new`} className="text-sm text-brand-500 hover:text-brand-400">Add Component</Link>}
                 </div>
 
                 {project.components?.length === 0 && <p className="text-gray-500 text-sm">No custom infrastructure components linked yet.</p>}
@@ -409,12 +436,16 @@ export function ProjectDetails() {
                                     <div className="text-lg font-bold text-white leading-tight">{comp.name}</div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Link to={`/projects/${project.id}/components/${comp.id}/edit`} className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-md transition" title="Edit Component">
-                                        <Info className="w-4 h-4" />
-                                    </Link>
-                                    <button onClick={() => handleDeleteComponent(comp.id, comp.name)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition" title="Delete Component">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {canEdit && (
+                                        <Link to={`/projects/${project.id}/components/${comp.id}/edit`} className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-md transition" title="Edit Component">
+                                            <Info className="w-4 h-4" />
+                                        </Link>
+                                    )}
+                                    {canDelete && (
+                                        <button onClick={() => handleDeleteComponent(comp.id, comp.name)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition" title="Delete Component">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
