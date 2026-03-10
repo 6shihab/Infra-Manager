@@ -29,8 +29,9 @@ export function DatabaseEngines() {
             queryClient.invalidateQueries({ queryKey: ['databases'] });
             toast.success('Database Engine deleted successfully');
         },
-        onError: () => {
-            toast.error('Failed to delete engine');
+        onError: (err: any) => {
+            const detail = err?.response?.data?.detail || 'Failed to delete engine';
+            toast.error(detail);
         }
     });
 

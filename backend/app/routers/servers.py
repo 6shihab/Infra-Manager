@@ -194,6 +194,18 @@ def delete_server(
     if not _can_delete_server(current_user, db_server, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
+    links = db.query(models.ProjectServer).filter(
+        models.ProjectServer.server_id == server_id
+    ).all()
+    if links:
+        project_ids = [l.project_id for l in links]
+        projects = db.query(models.Project).filter(models.Project.id.in_(project_ids)).all()
+        names = ", ".join(p.name for p in projects)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: this server is linked to project(s): {names}. Remove it from all projects first."
+        )
+
     server_name = db_server.name
     db_server.is_deleted = True
     db_server.deleted_at = datetime.utcnow()

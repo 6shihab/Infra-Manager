@@ -46,9 +46,6 @@ def create_component(request: Request, component: schemas.ComponentCreate, db: S
     project = db.query(models.Project).filter(models.Project.id == component.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    accessible = get_accessible_project_ids(current_user, db)
-    if accessible is not None and component.project_id not in accessible:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
     _require_editor_or_admin(current_user, component.project_id, db)
 
     db_component = models.Component(**component.model_dump())
@@ -73,9 +70,6 @@ def update_component(component_id: int, component: schemas.ComponentUpdate, db: 
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
-    accessible = get_accessible_project_ids(current_user, db)
-    if accessible is not None and db_component.project_id not in accessible:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
     _require_editor_or_admin(current_user, db_component.project_id, db)
 
     update_data = component.model_dump(exclude_unset=True)
@@ -92,11 +86,8 @@ def delete_component(component_id: int, db: Session = Depends(get_db), current_u
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
-    accessible = get_accessible_project_ids(current_user, db)
-    if accessible is not None and db_component.project_id not in accessible:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
     _require_editor_or_admin(current_user, db_component.project_id, db)
-    
+
     comp_name = db_component.name
     db_component.is_deleted = True
     db_component.deleted_at = datetime.utcnow()

@@ -158,9 +158,10 @@ export function ProjectDetails() {
                 setProject({ ...project, components: project.components.filter((c: any) => c.id !== deleteConfig.id) });
                 setDeleteConfig(null);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Failed to delete ${deleteConfig.type}`, err);
-            alert(`Error deleting ${deleteConfig.type}.`);
+            const detail = err?.response?.data?.detail || err?.message || `Error deleting ${deleteConfig.type}.`;
+            alert(detail);
         } finally {
             setDeleting(false);
         }
@@ -209,6 +210,7 @@ export function ProjectDetails() {
     const userRole: string | null = project.current_user_role ?? null;
     const canEdit = user?.is_superuser || userRole === 'Admin' || userRole === 'Editor';
     const canDelete = user?.is_superuser || userRole === 'Admin';
+    const canEditComponent = canEdit; // Editor and Admin can create/edit/delete components
 
     const roleBadgeClass: Record<string, string> = {
         Admin: 'bg-red-500/10 text-red-400 border border-red-500/20',
@@ -440,7 +442,7 @@ export function ProjectDetails() {
                                             <Info className="w-4 h-4" />
                                         </Link>
                                     )}
-                                    {canDelete && (
+                                    {canEditComponent && (
                                         <button onClick={() => handleDeleteComponent(comp.id, comp.name)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition" title="Delete Component">
                                             <Trash2 className="w-4 h-4" />
                                         </button>

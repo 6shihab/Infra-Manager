@@ -30,8 +30,9 @@ export function Servers() {
             queryClient.invalidateQueries({ queryKey: ['servers'] });
             toast.success('Server deleted successfully');
         },
-        onError: () => {
-            toast.error('Failed to delete server');
+        onError: (err: any) => {
+            const detail = err?.response?.data?.detail || 'Failed to delete server';
+            toast.error(detail);
         }
     });
 

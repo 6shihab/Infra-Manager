@@ -194,6 +194,18 @@ def delete_database(
     if not _can_delete_database(current_user, db_database, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
 
+    links = db.query(models.ProjectDatabase).filter(
+        models.ProjectDatabase.database_engine_id == database_id
+    ).all()
+    if links:
+        project_ids = [l.project_id for l in links]
+        projects = db.query(models.Project).filter(models.Project.id.in_(project_ids)).all()
+        names = ", ".join(p.name for p in projects)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: this database engine is linked to project(s): {names}. Remove it from all projects first."
+        )
+
     db_name = db_database.name
     db_database.is_deleted = True
     db_database.deleted_at = datetime.utcnow()
