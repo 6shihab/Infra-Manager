@@ -106,12 +106,18 @@ def read_servers(
         models.Project.created_by == current_user.id,
     )
     if user_group_ids:
-        via_group_q = db.query(models.ProjectGroupAccess.project_id).filter(
-            models.ProjectGroupAccess.group_id.in_(user_group_ids)
+        via_group_q = db.query(models.ProjectGroupAccess.project_id).join(
+            models.Project, models.Project.id == models.ProjectGroupAccess.project_id
+        ).filter(
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.Project.is_deleted == False,
         )
         project_ids_q = project_ids_q.union(via_group_q)
-    via_direct_user_q = db.query(models.ProjectUserAccess.project_id).filter(
-        models.ProjectUserAccess.user_id == current_user.id
+    via_direct_user_q = db.query(models.ProjectUserAccess.project_id).join(
+        models.Project, models.Project.id == models.ProjectUserAccess.project_id
+    ).filter(
+        models.ProjectUserAccess.user_id == current_user.id,
+        models.Project.is_deleted == False,
     )
     project_ids_q = project_ids_q.union(via_direct_user_q)
 
@@ -213,7 +219,7 @@ def delete_server(
     ).all()
     if links:
         project_ids = [l.project_id for l in links]
-        projects = db.query(models.Project).filter(models.Project.id.in_(project_ids)).all()
+        projects = db.query(models.Project).filter(models.Project.id.in_(project_ids), models.Project.is_deleted == False).all()
         names = ", ".join(p.name for p in projects)
         raise HTTPException(
             status_code=400,

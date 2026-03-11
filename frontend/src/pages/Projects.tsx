@@ -1,16 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Server, Database, Globe } from 'lucide-react';
+import { Plus, Search, Server, Database, Globe, AlertCircle } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
-
-// Mock data to use when backend is unavailable
-const fallbackProjects = [
-    { id: 1, name: 'Core API Services', description: 'Main backend services handling user data and auth.', environment: 'Prod', primary_domain: 'api.example.com' },
-    { id: 2, name: 'Frontend Application', description: 'Customer facing web application built with React.', environment: 'Prod', primary_domain: 'app.example.com' },
-    { id: 3, name: 'Data Pipeline', description: 'ETL jobs and processing workers.', environment: 'Staging', primary_domain: 'etl.staging.example.com' }
-];
 
 export function Projects() {
     const [searchParams] = useSearchParams();
@@ -19,16 +12,13 @@ export function Projects() {
     const [searchQuery, setSearchQuery] = useState(initialQuery);
     const [environmentFilter, setEnvironmentFilter] = useState('All Environments');
 
-    // Supercharged React Query hook for data fetching and caching
-    const { data: fetchedProjects, isLoading: loading } = useQuery({
+    const { data: projects, isLoading: loading, isError } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
             const { data } = await api.get('/projects/');
             return data;
         }
     });
-
-    const projects = fetchedProjects || fallbackProjects;
 
     // Sync input with URL search params if they are passed from Navbar
     useEffect(() => {
@@ -40,6 +30,7 @@ export function Projects() {
     }, [searchParams]);
 
     const filteredProjects = useMemo(() => {
+        if (!projects) return [];
         return projects.filter((project: any) => {
             // Environment Filter
             const matchesEnv = environmentFilter === 'All Environments' || project.environment === environmentFilter;
@@ -54,6 +45,16 @@ export function Projects() {
             return matchesEnv && matchesSearch;
         });
     }, [projects, searchQuery, environmentFilter]);
+
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+                <h3 className="text-lg font-medium text-white mb-1">Failed to load projects</h3>
+                <p className="text-gray-400 text-sm">Could not connect to the server. Please check your connection and try again.</p>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

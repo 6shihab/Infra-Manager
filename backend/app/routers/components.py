@@ -18,7 +18,7 @@ def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
     """Raise 403 if user is not superuser, project creator, or Editor/Admin on this project."""
     if user.is_superuser:
         return
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if project and project.created_by == user.id:
         return
     user_group_ids = [g.id for g in user.groups]
@@ -42,7 +42,7 @@ def _require_admin(user: models.User, project_id: int, db: Session):
     """Raise 403 if user is not superuser, project creator, or Admin on this project."""
     if user.is_superuser:
         return
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if project and project.created_by == user.id:
         return
     user_group_ids = [g.id for g in user.groups]
@@ -72,7 +72,7 @@ def read_components(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
 @router.post("/", response_model=schemas.ComponentResponse)
 @limiter.limit("20/minute")
 def create_component(request: Request, component: schemas.ComponentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    project = db.query(models.Project).filter(models.Project.id == component.project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == component.project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     _require_editor_or_admin(current_user, component.project_id, db)

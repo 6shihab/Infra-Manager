@@ -200,7 +200,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
 @router.post("/{project_id}/groups/{group_id}", response_model=schemas.ProjectGroupAccessResponse)
 def add_group_to_project(project_id: int, group_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     # Check if project exists
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -344,7 +344,7 @@ def remove_database_from_project(project_id: int, database_engine_id: int, db: S
 
 @router.post("/{project_id}/users/{user_id}", response_model=schemas.ProjectUserAccessResponse)
 def add_user_to_project(project_id: int, user_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 

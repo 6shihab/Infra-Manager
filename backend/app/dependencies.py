@@ -99,12 +99,16 @@ def require_project_role(required_roles: list[str]):
         if current_user.is_superuser:
             return True
 
-        # Check creator FIRST — before group membership check
+        # Resolve the project once — reject immediately if deleted or missing
         project = db.query(models.Project).filter(
             models.Project.id == project_id,
             models.Project.is_deleted == False,
         ).first()
-        if project and project.created_by == current_user.id:
+        if project is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+        # Creator always has full access
+        if project.created_by == current_user.id:
             return True
 
         # Check group-based access
