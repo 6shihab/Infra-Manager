@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Select } from '../components/Select';
 
 interface Group {
     id: string;
@@ -221,16 +222,16 @@ export function Groups() {
                         <div className="bg-black/20 p-4 border-t border-dark-border">
                             {selectedGroup === group.id ? (
                                 <div className="flex items-center gap-2">
-                                    <select
+                                    <Select
                                         value={selectedUserToAdd}
-                                        onChange={(e) => setSelectedUserToAdd(e.target.value)}
-                                        className="flex-1 px-3 py-1.5 text-sm bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                    >
-                                        <option value="">Select User...</option>
-                                        {allUsers.filter(u => !group.users?.some(gu => gu.id === u.id)).map(u => (
-                                            <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
-                                        ))}
-                                    </select>
+                                        onChange={setSelectedUserToAdd}
+                                        options={allUsers
+                                            .filter((u: any) => !group.users?.some((gu: any) => gu.id === u.id))
+                                            .map((u: any) => ({ value: u.id, label: u.full_name || u.email }))}
+                                        placeholder="Select User..."
+                                        className="flex-1"
+                                        size="sm"
+                                    />
                                     <button
                                         onClick={() => handleAssignUser(group.id)}
                                         disabled={!selectedUserToAdd}

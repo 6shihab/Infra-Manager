@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { ArrowLeft, Database } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Select } from '../components/Select';
 
 export function ProjectDatabaseForm() {
     const navigate = useNavigate();
@@ -85,19 +86,16 @@ export function ProjectDatabaseForm() {
             <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-xl space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Select Database Engine *</label>
-                    <select
-                        required
+                    <Select
                         value={selectedDbEngineId}
-                        onChange={(e) => setSelectedDbEngineId(e.target.value)}
-                        className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                    >
-                        <option value="" disabled>Select a global engine...</option>
-                        {globalEngines?.map((engine: any) => (
-                            <option key={engine.id} value={engine.id}>
-                                {engine.name} ({engine.engine} @ {engine.host})
-                            </option>
-                        ))}
-                    </select>
+                        onChange={setSelectedDbEngineId}
+                        options={globalEngines?.map((engine: any) => ({
+                            value: String(engine.id),
+                            label: `${engine.name} (${engine.engine} @ ${engine.host})`
+                        })) ?? []}
+                        placeholder="Select a global engine..."
+                        className="w-full"
+                    />
                     {globalEngines?.length === 0 && (
                         <p className="text-sm text-red-400 mt-2">No global database engines available. Please add one from the Database Engines page first.</p>
                     )}

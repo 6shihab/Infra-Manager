@@ -7,6 +7,7 @@ import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { Select } from '../components/Select';
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
     const [copied, setCopied] = useState(false);
@@ -614,25 +615,25 @@ export function ProjectDetails() {
 
                         {assigningGroup && (
                             <div className="mb-4 p-4 glass-panel border border-brand-500/30 rounded-lg flex flex-col sm:flex-row gap-3">
-                                <select
+                                <Select
                                     value={selectedGroupId}
-                                    onChange={(e) => setSelectedGroupId(e.target.value)}
-                                    className="flex-1 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                >
-                                    <option value="">Select a Group...</option>
-                                    {allGroups.filter(g => !project.group_accesses?.some((pga: any) => pga.group_id === g.id)).map(g => (
-                                        <option key={g.id} value={g.id}>{g.name}</option>
-                                    ))}
-                                </select>
-                                <select
+                                    onChange={setSelectedGroupId}
+                                    options={allGroups
+                                        .filter((g: any) => !project.group_accesses?.some((pga: any) => pga.group_id === g.id))
+                                        .map((g: any) => ({ value: g.id, label: g.name }))}
+                                    placeholder="Select a Group..."
+                                    className="flex-1"
+                                />
+                                <Select
                                     value={selectedAccessLevel}
-                                    onChange={(e) => setSelectedAccessLevel(e.target.value)}
-                                    className="w-full sm:w-48 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                >
-                                    <option value="Viewer">Viewer</option>
-                                    <option value="Editor">Editor</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                                    onChange={setSelectedAccessLevel}
+                                    options={[
+                                        { value: 'Viewer', label: 'Viewer' },
+                                        { value: 'Editor', label: 'Editor' },
+                                        { value: 'Admin', label: 'Admin' },
+                                    ]}
+                                    className="w-full sm:w-48"
+                                />
                                 <button
                                     onClick={handleAssignGroup}
                                     disabled={!selectedGroupId}
@@ -690,25 +691,25 @@ export function ProjectDetails() {
 
                         {assigningUser && (
                             <div className="mb-4 p-4 glass-panel border border-brand-500/30 rounded-lg flex flex-col sm:flex-row gap-3">
-                                <select
+                                <Select
                                     value={selectedUserId}
-                                    onChange={(e) => setSelectedUserId(e.target.value)}
-                                    className="flex-1 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                >
-                                    <option value="">Select a User...</option>
-                                    {allUsers.filter(u => !project.user_accesses?.some((pua: any) => pua.user_id === u.id) && u.id !== project.created_by).map((u: any) => (
-                                        <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
-                                    ))}
-                                </select>
-                                <select
+                                    onChange={setSelectedUserId}
+                                    options={allUsers
+                                        .filter((u: any) => !project.user_accesses?.some((pua: any) => pua.user_id === u.id) && u.id !== project.created_by)
+                                        .map((u: any) => ({ value: u.id, label: u.full_name || u.email }))}
+                                    placeholder="Select a User..."
+                                    className="flex-1"
+                                />
+                                <Select
                                     value={selectedUserAccessLevel}
-                                    onChange={(e) => setSelectedUserAccessLevel(e.target.value)}
-                                    className="w-full sm:w-48 px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                >
-                                    <option value="Viewer">Viewer</option>
-                                    <option value="Editor">Editor</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
+                                    onChange={setSelectedUserAccessLevel}
+                                    options={[
+                                        { value: 'Viewer', label: 'Viewer' },
+                                        { value: 'Editor', label: 'Editor' },
+                                        { value: 'Admin', label: 'Admin' },
+                                    ]}
+                                    className="w-full sm:w-48"
+                                />
                                 <button
                                     onClick={handleAssignUser}
                                     disabled={!selectedUserId}

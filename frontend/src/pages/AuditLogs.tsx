@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { Select } from '../components/Select';
 
 const ACTION_OPTIONS = [
     'CREATED', 'UPDATED', 'DELETED', 'LOGIN', 'LOGOUT',
@@ -88,7 +89,6 @@ export function AuditLogs() {
         }
     };
 
-    const selectClass = "px-3 py-2 bg-black/30 border border-dark-border rounded-lg text-sm text-white focus:outline-none focus:border-brand-500 appearance-none";
     const inputClass = "px-3 py-2 bg-black/30 border border-dark-border rounded-lg text-sm text-white focus:outline-none focus:border-brand-500";
 
     return (
@@ -119,28 +119,20 @@ export function AuditLogs() {
                     </div>
 
                     {/* Action filter */}
-                    <select
+                    <Select
                         value={actionFilter}
-                        onChange={(e) => setActionFilter(e.target.value)}
-                        className={selectClass}
-                    >
-                        <option value="">All Actions</option>
-                        {ACTION_OPTIONS.map(a => (
-                            <option key={a} value={a}>{a}</option>
-                        ))}
-                    </select>
+                        onChange={setActionFilter}
+                        options={[{ value: '', label: 'All Actions' }, ...ACTION_OPTIONS.map(a => ({ value: a, label: a }))]}
+                        placeholder="All Actions"
+                    />
 
                     {/* Resource type filter */}
-                    <select
+                    <Select
                         value={resourceTypeFilter}
-                        onChange={(e) => setResourceTypeFilter(e.target.value)}
-                        className={selectClass}
-                    >
-                        <option value="">All Resource Types</option>
-                        {RESOURCE_TYPE_OPTIONS.map(r => (
-                            <option key={r} value={r}>{r}</option>
-                        ))}
-                    </select>
+                        onChange={setResourceTypeFilter}
+                        options={[{ value: '', label: 'All Resource Types' }, ...RESOURCE_TYPE_OPTIONS.map(r => ({ value: r, label: r }))]}
+                        placeholder="All Resource Types"
+                    />
 
                     {/* Date range */}
                     <div className="flex items-center gap-2">

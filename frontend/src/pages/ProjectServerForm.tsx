@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { ArrowLeft, Server } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Select } from '../components/Select';
 
 export function ProjectServerForm() {
     const navigate = useNavigate();
@@ -80,19 +81,16 @@ export function ProjectServerForm() {
             <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-xl space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Select Server *</label>
-                    <select
-                        required
+                    <Select
                         value={selectedServerId}
-                        onChange={(e) => setSelectedServerId(e.target.value)}
-                        className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                    >
-                        <option value="" disabled>Select a global server...</option>
-                        {globalServers?.map((server: any) => (
-                            <option key={server.id} value={server.id}>
-                                {server.name} ({server.ip_address})
-                            </option>
-                        ))}
-                    </select>
+                        onChange={setSelectedServerId}
+                        options={globalServers?.map((server: any) => ({
+                            value: String(server.id),
+                            label: `${server.name} (${server.ip_address})`
+                        })) ?? []}
+                        placeholder="Select a global server..."
+                        className="w-full"
+                    />
                     {globalServers?.length === 0 && (
                         <p className="text-sm text-red-400 mt-2">No global servers available. Please add one from the Servers page first.</p>
                     )}

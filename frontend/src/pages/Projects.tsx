@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Server, Database, Globe, AlertCircle } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
+import { Select } from '../components/Select';
 
 export function Projects() {
     const [searchParams] = useSearchParams();
@@ -123,16 +124,17 @@ export function Projects() {
                         placeholder="Search projects by name, description, or domain..."
                     />
                 </div>
-                <select
+                <Select
                     value={environmentFilter}
-                    onChange={(e) => setEnvironmentFilter(e.target.value)}
-                    className="block w-40 pl-3 pr-10 py-2 text-base border-dark-border border bg-black/20 text-gray-300 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm rounded-lg appearance-none cursor-pointer"
-                >
-                    <option>All Environments</option>
-                    <option>Prod</option>
-                    <option>Staging</option>
-                    <option>Dev</option>
-                </select>
+                    onChange={setEnvironmentFilter}
+                    options={[
+                        { value: 'All Environments', label: 'All Environments' },
+                        { value: 'Prod', label: 'Prod' },
+                        { value: 'Staging', label: 'Staging' },
+                        { value: 'Dev', label: 'Dev' },
+                    ]}
+                    className="w-40"
+                />
             </div>
 
             {/* Projects Grid */}

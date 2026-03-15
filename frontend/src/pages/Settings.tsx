@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Select } from '../components/Select';
 
 interface Setting {
     key: string;
@@ -248,12 +249,16 @@ export function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Select User</label>
-                            <select value={adminPwUserId} onChange={e => setAdminPwUserId(e.target.value)} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white appearance-none">
-                                <option value="">-- Select a user --</option>
-                                {allUsers.map(u => (
-                                    <option key={u.id} value={u.id}>{u.full_name ? `${u.full_name} (${u.email})` : u.email}</option>
-                                ))}
-                            </select>
+                            <Select
+                                value={adminPwUserId}
+                                onChange={setAdminPwUserId}
+                                options={allUsers.map((u: any) => ({
+                                    value: u.id,
+                                    label: u.full_name ? `${u.full_name} (${u.email})` : u.email
+                                }))}
+                                placeholder="-- Select a user --"
+                                className="w-full"
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
@@ -313,14 +318,15 @@ export function Settings() {
                                 <p className="text-xs text-gray-500 mb-3">{setting.description}</p>
 
                                 {setting.key === 'theme' ? (
-                                    <select
+                                    <Select
                                         value={setting.value}
-                                        onChange={(e) => handleValueChange(setting.key, e.target.value)}
-                                        className="w-full md:w-1/2 px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white appearance-none"
-                                    >
-                                        <option value="dark">Dark Theme</option>
-                                        <option value="light">Light Theme</option>
-                                    </select>
+                                        onChange={(value) => handleValueChange(setting.key, value)}
+                                        options={[
+                                            { value: 'dark', label: 'Dark Theme' },
+                                            { value: 'light', label: 'Light Theme' },
+                                        ]}
+                                        className="w-full md:w-1/2"
+                                    />
                                 ) : (
                                     <input
                                         type="text"

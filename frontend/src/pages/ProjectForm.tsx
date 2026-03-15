@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { Select } from '../components/Select';
 
 export function ProjectForm() {
     const navigate = useNavigate();
@@ -106,15 +107,16 @@ export function ProjectForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Environment</label>
-                        <select
+                        <Select
                             value={formData.environment}
-                            onChange={(e) => setFormData({ ...formData, environment: e.target.value })}
-                            className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white appearance-none"
-                        >
-                            <option value="Dev">Development (Dev)</option>
-                            <option value="Staging">Staging</option>
-                            <option value="Prod">Production (Prod)</option>
-                        </select>
+                            onChange={(val) => setFormData({ ...formData, environment: val })}
+                            options={[
+                                { value: 'Dev', label: 'Development (Dev)' },
+                                { value: 'Staging', label: 'Staging' },
+                                { value: 'Prod', label: 'Production (Prod)' },
+                            ]}
+                            className="w-full"
+                        />
                     </div>
 
                     <div>
