@@ -78,6 +78,7 @@ desktop/release/
 *.sqlite
 *.sqlite3
 
-# Claude / Playwright
+# Claude / Playwright / MCP
 .claude/
 .playwright-mcp/
+.mcp.json
