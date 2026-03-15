@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 export function ProjectForm() {
     const navigate = useNavigate();
@@ -11,6 +12,7 @@ export function ProjectForm() {
     const isEditMode = Boolean(id);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
+    const toast = useToast();
 
     const [formData, setFormData] = useState({
         name: '',
@@ -50,7 +52,7 @@ export function ProjectForm() {
             }
         } catch (err) {
             console.error("Failed to save project", err);
-            alert("Error saving project.");
+            toast.error("Error saving project.");
             setLoading(false);
         }
     };

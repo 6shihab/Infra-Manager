@@ -4,7 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { AutoLogout } from './components/AutoLogout';
-import { Toaster } from 'react-hot-toast';
+import { ToastProvider } from './components/Toast';
 import React, { Suspense, useState, useEffect } from 'react';
 import api from './utils/api';
 
@@ -50,8 +50,8 @@ function App() {
   return (
     <AuthProvider>
       <NotificationsProvider>
+      <ToastProvider>
       <AutoLogout />
-      <Toaster position="top-right" />
       <Router>
         <Suspense fallback={<Spinner />}>
           <Routes>
@@ -90,6 +90,7 @@ function App() {
           </Routes>
         </Suspense>
       </Router>
+      </ToastProvider>
       </NotificationsProvider>
     </AuthProvider>
   );

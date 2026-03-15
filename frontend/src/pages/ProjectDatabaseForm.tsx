@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { ArrowLeft, Database } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../components/Toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function ProjectDatabaseForm() {
     const navigate = useNavigate();
     const { projectId } = useParams();
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     const [selectedDbEngineId, setSelectedDbEngineId] = useState<number | ''>('');
     const [overrideCredentials, setOverrideCredentials] = useState(false);

@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Server as ServerIcon, Trash2, Edit } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Servers() {
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
     const queryClient = useQueryClient();
+    const toast = useToast();
     const canEdit = (server: any) => server.can_edit === true;
     const canDelete = (server: any) => server.can_delete === true;
 

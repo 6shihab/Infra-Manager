@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Database as DatabaseIcon, Trash2, Edit } from 'lucide-react';
 import api from '../utils/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function DatabaseEngines() {
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
     const queryClient = useQueryClient();
+    const toast = useToast();
     const canEdit = (engine: any) => engine.can_edit === true;
     const canDelete = (engine: any) => engine.can_delete === true;
 

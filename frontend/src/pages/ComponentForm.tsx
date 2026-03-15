@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Save, Trash2, Layers } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from '../components/Toast';
 
 interface CustomField {
     key: string;
@@ -12,6 +13,7 @@ export function ComponentForm() {
     const { projectId, componentId } = useParams();
     const navigate = useNavigate();
     const isEditMode = Boolean(componentId);
+    const toast = useToast();
 
     const [name, setName] = useState('');
     const [type, setType] = useState(''); // Default empty to allow any type
@@ -41,7 +43,7 @@ export function ComponentForm() {
                 })
                 .catch(err => {
                     console.error("Failed to load component details", err);
-                    alert("Component not found");
+                    toast.error("Component not found");
                     navigate(`/projects/${projectId}`);
                 })
                 .finally(() => setLoading(false));
@@ -92,7 +94,7 @@ export function ComponentForm() {
             navigate(`/projects/${projectId}`);
         } catch (err) {
             console.error(err);
-            alert("An error occurred while saving the component.");
+            toast.error("An error occurred while saving the component.");
             setSubmitting(false);
         }
     };

@@ -6,6 +6,7 @@ import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
     const [copied, setCopied] = useState(false);
@@ -87,6 +88,7 @@ export function ProjectDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const toast = useToast();
     const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -129,7 +131,7 @@ export function ProjectDetails() {
             setSelectedGroupId('');
             setSelectedAccessLevel('Viewer');
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to assign group");
+            toast.error(err.response?.data?.detail || "Failed to assign group");
         }
     };
 
@@ -140,7 +142,7 @@ export function ProjectDetails() {
             setProject(res.data);
             setConfirmRemoveGroup(null);
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to remove group");
+            toast.error(err.response?.data?.detail || "Failed to remove group");
             setConfirmRemoveGroup(null);
         }
     }
@@ -155,7 +157,7 @@ export function ProjectDetails() {
             setSelectedUserId('');
             setSelectedUserAccessLevel('Viewer');
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to assign user");
+            toast.error(err.response?.data?.detail || "Failed to assign user");
         }
     };
 
@@ -166,7 +168,7 @@ export function ProjectDetails() {
             setProject(res.data);
             setConfirmRemoveUser(null);
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Failed to remove user");
+            toast.error(err.response?.data?.detail || "Failed to remove user");
             setConfirmRemoveUser(null);
         }
     };
@@ -195,7 +197,7 @@ export function ProjectDetails() {
         } catch (err: any) {
             console.error(`Failed to delete ${deleteConfig.type}`, err);
             const detail = err?.response?.data?.detail || err?.message || `Error deleting ${deleteConfig.type}.`;
-            alert(detail);
+            toast.error(detail);
         } finally {
             setDeleting(false);
         }

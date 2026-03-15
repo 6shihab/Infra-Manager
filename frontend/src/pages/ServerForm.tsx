@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Server } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 export function ServerForm() {
     const navigate = useNavigate();
@@ -11,6 +12,7 @@ export function ServerForm() {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     // Server payload includes default credentials
     const [formData, setFormData] = useState({
@@ -55,7 +57,7 @@ export function ServerForm() {
             navigate(`/servers`);
         } catch (err) {
             console.error("Failed to save server", err);
-            alert("Error saving server.");
+            toast.error("Error saving server.");
             setLoading(false);
         }
     };

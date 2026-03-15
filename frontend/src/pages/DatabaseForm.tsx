@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Database } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 export function DatabaseForm() {
     const navigate = useNavigate();
@@ -11,6 +12,7 @@ export function DatabaseForm() {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const queryClient = useQueryClient();
+    const toast = useToast();
 
     // Database payload includes default credentials
     const [formData, setFormData] = useState({
@@ -55,7 +57,7 @@ export function DatabaseForm() {
             navigate(`/databases`);
         } catch (err) {
             console.error("Failed to save database engine", err);
-            alert("Error saving database.");
+            toast.error("Error saving database.");
             setLoading(false);
         }
     };
