@@ -176,6 +176,23 @@ def read_server(
     return db_server
 
 
+@router.get("/{server_id}/credentials", response_model=schemas.ServerCredentialsResponse)
+def read_server_credentials(
+    server_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    db_server = db.query(models.Server).filter(
+        models.Server.id == server_id, models.Server.is_deleted == False
+    ).first()
+    if db_server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+    if not _can_edit_server(current_user, db_server, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    log_audit(db, current_user.id, "REVEALED", "Server", db_server.name)
+    return db_server
+
+
 @router.put("/{server_id}", response_model=schemas.ServerResponse)
 def update_server(
     server_id: uuid.UUID,

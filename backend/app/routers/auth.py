@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from app import schemas, models, auth, dependencies
 from app.database import get_db
 from app.audit import log_audit
+from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,12 +43,20 @@ def read_users_me(current_user: models.User = Depends(dependencies.get_current_u
 
 @router.post("/logout")
 def logout(token: str = Depends(dependencies.oauth2_scheme), db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user)):
-    blocked = models.TokenBlocklist(token=token)
-    db.add(blocked)
+    import jwt as pyjwt
     try:
-        db.commit()
-    except IntegrityError:
-        db.rollback() # Token already in blocklist, that's fine
-    
+        payload = pyjwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        jti = payload.get("jti")
+    except Exception:
+        jti = None
+
+    if jti:
+        blocked = models.TokenBlocklist(jti=jti)
+        db.add(blocked)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+
     log_audit(db, current_user.id, "LOGOUT", "System", current_user.email)
     return {"message": "Successfully logged out"}

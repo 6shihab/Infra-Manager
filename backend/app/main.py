@@ -45,7 +45,8 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down background tasks...")
 
-app = FastAPI(title="Infra Manager API", lifespan=lifespan)
+_docs_kwargs = {} if settings.enable_docs else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="Infra Manager API", lifespan=lifespan, **_docs_kwargs)
 
 # Setup Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -84,8 +85,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 app.include_router(projects.router)

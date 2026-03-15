@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_active_superuser
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(
     prefix="/settings",
@@ -32,7 +36,8 @@ def get_all_settings(db: Session = Depends(get_db), _: models.User = Depends(get
     return settings
 
 @router.put("/{key}", response_model=schemas.SettingResponse)
-def update_setting(key: str, setting_update: schemas.SettingUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_active_superuser)):
+@limiter.limit("10/minute")
+def update_setting(request: Request, key: str, setting_update: schemas.SettingUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_active_superuser)):
     setting = db.query(models.Setting).filter(models.Setting.key == key).first()
     if not setting:
         raise HTTPException(status_code=404, detail="Setting not found")

@@ -176,6 +176,23 @@ def read_database(
     return db_database
 
 
+@router.get("/{database_id}/credentials", response_model=schemas.DatabaseCredentialsResponse)
+def read_database_credentials(
+    database_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    db_database = db.query(models.DatabaseEngine).filter(
+        models.DatabaseEngine.id == database_id, models.DatabaseEngine.is_deleted == False
+    ).first()
+    if db_database is None:
+        raise HTTPException(status_code=404, detail="DatabaseEngine not found")
+    if not _can_edit_database(current_user, db_database, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    log_audit(db, current_user.id, "REVEALED", "DatabaseEngine", db_database.name)
+    return db_database
+
+
 @router.put("/{database_id}", response_model=schemas.DatabaseEngineResponse)
 def update_database(
     database_id: uuid.UUID,

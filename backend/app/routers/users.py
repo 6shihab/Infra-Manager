@@ -1,11 +1,15 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models, auth
 from app.database import get_db
 from app.dependencies import get_current_active_superuser, get_current_user
 from app.audit import log_audit
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -35,7 +39,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
     return db_user
 
 @router.put("/me/password")
-def change_own_password(payload: schemas.PasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@limiter.limit("5/minute")
+def change_own_password(request: Request, payload: schemas.PasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not auth.verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.hashed_password = auth.get_password_hash(payload.new_password)
@@ -44,7 +49,8 @@ def change_own_password(payload: schemas.PasswordChange, db: Session = Depends(g
     return {"status": "password updated"}
 
 @router.put("/{user_id}/password")
-def admin_change_password(user_id: uuid.UUID, payload: schemas.AdminPasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+@limiter.limit("5/minute")
+def admin_change_password(request: Request, user_id: uuid.UUID, payload: schemas.AdminPasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     target_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")

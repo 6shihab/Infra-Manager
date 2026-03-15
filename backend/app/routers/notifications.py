@@ -26,21 +26,25 @@ def _authenticate_token(token: str, db: Session) -> models.User:
     )
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") == "totp_pending":
+            raise credentials_exception
         email: str = payload.get("sub")
+        jti: str = payload.get("jti")
         if not email:
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
 
-    # Check token blacklist
-    blacklisted = db.query(models.TokenBlocklist).filter(
-        models.TokenBlocklist.token == token
-    ).first()
-    if blacklisted:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-        )
+    # Check token blacklist by jti
+    if jti:
+        blacklisted = db.query(models.TokenBlocklist).filter(
+            models.TokenBlocklist.jti == jti
+        ).first()
+        if blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
 
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None or not user.is_active:

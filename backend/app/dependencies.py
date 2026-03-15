@@ -15,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-def is_token_blacklisted(db: Session, token: str) -> bool:
-    """Check if a token has been explicitly revoked."""
-    blacklisted_token = db.query(models.TokenBlocklist).filter(models.TokenBlocklist.token == token).first()
-    return blacklisted_token is not None
+def is_token_blacklisted(db: Session, jti: str) -> bool:
+    """Check if a token's jti has been explicitly revoked."""
+    return db.query(models.TokenBlocklist).filter(models.TokenBlocklist.jti == jti).first() is not None
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -26,25 +25,27 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
-    if is_token_blacklisted(db, token):
-        logger.warning("Rejected blacklisted token")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
+
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         if payload.get("type") == "totp_pending":
             raise credentials_exception
         email: str = payload.get("sub")
+        jti: str = payload.get("jti")
         if email is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
     except (InvalidTokenError, ValidationError):
         raise credentials_exception
+
+    if jti and is_token_blacklisted(db, jti):
+        logger.warning("Rejected blacklisted token jti=%s", jti)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user = db.query(models.User).filter(models.User.email == token_data.email).first()
     if user is None:
         raise credentials_exception

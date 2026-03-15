@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     audit_log_retention_days: int = 30
     allowed_origins: str | list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:8080"]
     log_level: str = "INFO"
+    enable_docs: bool = True
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

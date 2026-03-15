@@ -455,17 +455,47 @@ export function ProjectDetails() {
                                 </div>
 
                                 <div className="border-t border-dark-border pt-4 mt-2">
-                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
-                                        <Lock className="w-3 h-3 mr-1.5" /> Authentication {(link.username || link.password || link.ssh_key) ? <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span> : <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>}
-                                    </div>
-                                    {(link.username || link.password || link.ssh_key || server.username || server.password || server.ssh_key) ? (
-                                        <SecretField
-                                            username={link.username || server.username}
-                                            password={link.password || server.password}
-                                            ssh_key={link.ssh_key || server.ssh_key}
-                                            label="SSH / Root" />
+                                    {(link.username || link.password || link.ssh_key) ? (
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <Lock className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span>
+                                            </div>
+                                            <SecretField
+                                                username={link.username}
+                                                password={link.password}
+                                                ssh_key={link.ssh_key}
+                                                label="SSH / Root" />
+                                            {(server.username || server.password || server.ssh_key) && (
+                                                <>
+                                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2 mt-4">
+                                                        <Lock className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>
+                                                    </div>
+                                                    <SecretField
+                                                        username={server.username}
+                                                        password={server.password}
+                                                        ssh_key={server.ssh_key}
+                                                        label="SSH / Root" />
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (server.username || server.password || server.ssh_key) ? (
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <Lock className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>
+                                            </div>
+                                            <SecretField
+                                                username={server.username}
+                                                password={server.password}
+                                                ssh_key={server.ssh_key}
+                                                label="SSH / Root" />
+                                        </>
                                     ) : (
-                                        <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <Lock className="w-3 h-3 mr-1.5" /> Authentication
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -524,16 +554,44 @@ export function ProjectDetails() {
                                 </div>
 
                                 <div className="border-t border-dark-border pt-4 mt-2">
-                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
-                                        <KeySquare className="w-3 h-3 mr-1.5" /> Authentication {(link.username || link.password) ? <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span> : <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>}
-                                    </div>
-                                    {(link.username || link.password || db.username || db.password) ? (
-                                        <SecretField
-                                            username={link.username || db.username}
-                                            password={link.password || db.password}
-                                            label="Database User" />
+                                    {(link.username || link.password) ? (
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <KeySquare className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded text-[10px]">Project Specific</span>
+                                            </div>
+                                            <SecretField
+                                                username={link.username}
+                                                password={link.password}
+                                                label="Database User" />
+                                            {(db.username || db.password) && (
+                                                <>
+                                                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2 mt-4">
+                                                        <KeySquare className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>
+                                                    </div>
+                                                    <SecretField
+                                                        username={db.username}
+                                                        password={db.password}
+                                                        label="Database User" />
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (db.username || db.password) ? (
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <KeySquare className="w-3 h-3 mr-1.5" /> Authentication <span className="ml-2 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 rounded text-[10px]">Global Default</span>
+                                            </div>
+                                            <SecretField
+                                                username={db.username}
+                                                password={db.password}
+                                                label="Database User" />
+                                        </>
                                     ) : (
-                                        <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                        <>
+                                            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center mb-2">
+                                                <KeySquare className="w-3 h-3 mr-1.5" /> Authentication
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-2">No credentials attached.</p>
+                                        </>
                                     )}
                                 </div>
                             </div>

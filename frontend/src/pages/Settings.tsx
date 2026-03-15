@@ -22,7 +22,7 @@ interface UserOption {
 }
 
 export function Settings() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -161,14 +161,13 @@ export function Settings() {
     const handleTotpEnabled = () => {
         setTotpEnabled(true);
         setTotpSetupOpen(false);
-        // Refresh user data so AuthContext picks up totp_enabled
-        window.location.reload();
+        refreshUser();
     };
 
     const handleTotpDisabled = () => {
         setTotpEnabled(false);
         setTotpDisableOpen(false);
-        window.location.reload();
+        refreshUser();
     };
 
     const handleAdminDisable2fa = async () => {

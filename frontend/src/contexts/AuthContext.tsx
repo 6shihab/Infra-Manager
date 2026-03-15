@@ -17,6 +17,7 @@ interface AuthContextType {
     token: string | null;
     login: (token: string) => void;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     loading: boolean;
 }
 
@@ -100,8 +101,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastActivityRef.current = Date.now();
     };
 
+    const refreshUser = useCallback(async () => {
+        try {
+            const res = await api.get('/auth/me');
+            setUser(res.data);
+        } catch {
+            // If refresh fails, don't logout — user might just have a stale session
+        }
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, refreshUser, loading }}>
             {children}
         </AuthContext.Provider>
     );

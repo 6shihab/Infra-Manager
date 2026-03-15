@@ -1,8 +1,10 @@
 import asyncio
 import concurrent.futures
+import ipaddress
 import logging
 import socket
 import uuid
+from urllib.parse import urlparse
 import httpx
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import update as sa_update, select
@@ -13,6 +15,26 @@ from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
+
+
+def _is_safe_url(url: str) -> bool:
+    """Reject URLs targeting private/internal IPs to prevent SSRF."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        # Resolve hostname to IP and check
+        for info in socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            addr = info[4][0]
+            ip = ipaddress.ip_address(addr)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+        return True
+    except Exception:
+        return False
 
 
 def _project_member_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
@@ -71,8 +93,12 @@ async def check_project_online(project: Project) -> bool:
     if not url.startswith('http'):
         url = f"https://{url}"
 
+    if not _is_safe_url(url):
+        logger.warning("Skipping unsafe URL for project %s: %s", project.name, url)
+        return False
+
     try:
-        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             await client.get(url)
             return True
     except httpx.RequestError:

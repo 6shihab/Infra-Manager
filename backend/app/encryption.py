@@ -16,7 +16,12 @@ class EncryptionService:
                 "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
             )
         self.key = key_str.encode('utf-8')
-        self.fernet = Fernet(self.key)
+        try:
+            self.fernet = Fernet(self.key)
+            # Validate key by performing a test round-trip
+            self.fernet.decrypt(self.fernet.encrypt(b"_key_validation_test"))
+        except Exception as e:
+            raise RuntimeError(f"ENCRYPTION_KEY is invalid: {e}") from e
 
     def encrypt(self, plain_text: str) -> str:
         if not plain_text:
