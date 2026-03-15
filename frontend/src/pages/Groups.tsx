@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus } from 'lucide-react';
+import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus, X } from 'lucide-react';
+import { useToast } from '../components/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Select } from '../components/Select';
@@ -20,6 +21,7 @@ interface User {
 
 export function Groups() {
     const { user: currentUser } = useAuth();
+    const toast = useToast();
     const [groups, setGroups] = useState<Group[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -107,6 +109,15 @@ export function Groups() {
         } catch (err: any) {
             const msg = err.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to assign user to group');
+        }
+    };
+
+    const handleRemoveUser = async (groupId: string, userId: string) => {
+        try {
+            await api.delete(`/groups/${groupId}/users/${userId}`);
+            fetchGroups();
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || "Failed to remove user from group");
         }
     };
 
@@ -208,8 +219,15 @@ export function Groups() {
                                 {group.users && group.users.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
                                         {group.users.map(u => (
-                                            <div key={u.id} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-black/40 text-gray-300 border border-dark-border" title={u.email}>
+                                            <div key={u.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/40 text-gray-300 border border-dark-border group/badge" title={u.email}>
                                                 {u.full_name || u.email.split('@')[0]}
+                                                <button
+                                                    onClick={() => handleRemoveUser(group.id, u.id)}
+                                                    className="ml-0.5 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover/badge:opacity-100"
+                                                    title="Remove from group"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

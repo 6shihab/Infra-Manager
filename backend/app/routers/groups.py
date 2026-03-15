@@ -40,3 +40,14 @@ def add_user_to_group(group_id: uuid.UUID, user_id: uuid.UUID, db: Session = Dep
         group.users.append(user)
         db.commit()
     return {"status": "success", "message": f"User {user_id} added to Group {group_id}"}
+
+@router.delete("/{group_id}/users/{user_id}")
+def remove_user_from_group(group_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not group or not user:
+        raise HTTPException(status_code=404, detail="Group or User not found")
+    if user in group.users:
+        group.users.remove(user)
+        db.commit()
+    return {"status": "success"}
