@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Clock, User, Activity, FileText, Search, Calendar, X } from 'lucide-react';
+import { Shield, Clock, User, Activity, FileText, Search, Calendar, X, WifiOff } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { Navigate } from 'react-router-dom';
 import { Select } from '../components/Select';
 
@@ -18,6 +19,7 @@ const RESOURCE_TYPE_OPTIONS = [
 
 export function AuditLogs() {
     const { user } = useAuth();
+    const { isOnline } = useOffline();
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalCount, setTotalCount] = useState(0);
@@ -72,6 +74,23 @@ export function AuditLogs() {
 
     if (!user?.is_superuser) {
         return <Navigate to="/" replace />;
+    }
+
+    if (!isOnline && window.electronAPI) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div>
+                    <h1 className="text-2xl font-bold text-white tracking-tight flex items-center">
+                        <Shield className="w-7 h-7 mr-3 text-brand-400" /> Audit Logs
+                    </h1>
+                </div>
+                <div className="glass-panel p-12 rounded-xl text-center">
+                    <WifiOff className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+                    <h2 className="text-lg font-semibold text-white mb-2">Not Available Offline</h2>
+                    <p className="text-gray-400">Audit logs are only available when connected to the server.</p>
+                </div>
+            </div>
+        );
     }
 
     const getActionColor = (action: string) => {

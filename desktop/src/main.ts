@@ -10,6 +10,9 @@ import {
 } from 'electron';
 import * as path from 'path';
 import { readConfig, writeConfig } from './config';
+import { registerOfflineIpcHandlers, setMainWindow } from './ipc/index';
+import { getDb, startAutoSave, closeDb } from './db/index';
+import { SyncEngine } from './sync/engine';
 
 // Prevent multiple instances
 if (!app.requestSingleInstanceLock()) {
@@ -20,6 +23,7 @@ if (!app.requestSingleInstanceLock()) {
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+let syncEngine: SyncEngine | null = null;
 
 // ── Window creation ─────────────────────────────────────────────────────────
 
@@ -142,6 +146,7 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('config:setApiUrl', (_event, url: string) => {
     writeConfig({ apiUrl: url });
+    if (syncEngine) syncEngine.updateApiUrl(url);
   });
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
@@ -174,14 +179,28 @@ app.on('second-instance', () => {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerIpcHandlers();
+  registerOfflineIpcHandlers();
+
+  // Initialize SQLite database
+  await getDb();
+  startAutoSave();
+
   createWindow();
+  if (win) setMainWindow(win);
   createTray();
+
+  // Start sync engine
+  const config = readConfig();
+  syncEngine = new SyncEngine(config.apiUrl);
+  await syncEngine.start();
 });
 
 app.on('before-quit', () => {
   isQuitting = true;
+  if (syncEngine) syncEngine.stop();
+  closeDb();
 });
 
 app.on('window-all-closed', () => {

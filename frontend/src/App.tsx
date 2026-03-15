@@ -3,10 +3,12 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
+import { OfflineProvider } from './contexts/OfflineContext';
 import { AutoLogout } from './components/AutoLogout';
 import { ToastProvider } from './components/Toast';
 import React, { Suspense, useState, useEffect } from 'react';
 import api from './utils/api';
+import { installOfflineAdapter } from './utils/offlineAdapter';
 
 const Login = React.lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -41,6 +43,7 @@ function App() {
     if (!window.electronAPI) return;
     window.electronAPI.getApiUrl().then(url => {
       api.defaults.baseURL = url;
+      installOfflineAdapter();
       setReady(true);
     });
   }, []);
@@ -48,6 +51,7 @@ function App() {
   if (!ready) return <Spinner />;
 
   return (
+    <OfflineProvider>
     <AuthProvider>
       <NotificationsProvider>
       <ToastProvider>
@@ -93,6 +97,7 @@ function App() {
       </ToastProvider>
       </NotificationsProvider>
     </AuthProvider>
+    </OfflineProvider>
   );
 }
 

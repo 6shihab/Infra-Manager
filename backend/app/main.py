@@ -111,3 +111,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/")
 def read_root():
     return {"message": "Infra Manager API is running"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

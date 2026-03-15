@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useAuth } from '../contexts/AuthContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { Select } from '../components/Select';
@@ -90,6 +91,8 @@ export function ProjectDetails() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const toast = useToast();
+    const { isOnline } = useOffline();
+    const offlineElectron = !isOnline && !!window.electronAPI;
     const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -665,7 +668,9 @@ export function ProjectDetails() {
                             </div>
                             <button
                                 onClick={() => setAssigningGroup(!assigningGroup)}
-                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
                             >
                                 {assigningGroup ? 'Cancel' : <><Plus className="h-4 w-4 mr-2" /> Assign Group</>}
                             </button>
@@ -741,7 +746,9 @@ export function ProjectDetails() {
                             </div>
                             <button
                                 onClick={() => setAssigningUser(!assigningUser)}
-                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
                             >
                                 {assigningUser ? 'Cancel' : <><Plus className="h-4 w-4 mr-2" /> Assign User</>}
                             </button>

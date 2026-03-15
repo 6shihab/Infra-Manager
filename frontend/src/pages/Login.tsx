@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { KeySquare, Lock, LogIn, Shield, ArrowLeft } from 'lucide-react';
+import { useOffline } from '../contexts/OfflineContext';
+import { KeySquare, Lock, LogIn, Shield, ArrowLeft, WifiOff } from 'lucide-react';
 import api from '../utils/api';
 
 export function Login() {
@@ -16,6 +17,7 @@ export function Login() {
     const [totpCode, setTotpCode] = useState('');
 
     const { login, token } = useAuth();
+    const { isOnline } = useOffline();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -23,6 +25,16 @@ export function Login() {
             navigate('/');
         }
     }, [token, navigate]);
+
+    // Offline + Electron: try to use cached session
+    const [offlineAttempted, setOfflineAttempted] = useState(false);
+    useEffect(() => {
+        if (!window.electronAPI || isOnline || offlineAttempted || token) return;
+        setOfflineAttempted(true);
+        // The offline adapter will return cached session from SQLite for GET /auth/me
+        // which AuthContext already calls on mount. If it succeeds, token will be set.
+        // If not, we show the offline login message below.
+    }, [isOnline, offlineAttempted, token]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,6 +119,14 @@ export function Login() {
                             <h2 className="text-3xl font-bold text-white tracking-tight">InfraManager</h2>
                             <p className="mt-2 text-sm text-gray-400">Sign in to control your infrastructure</p>
                         </div>
+
+                        {/* Offline mode warning for Electron */}
+                        {window.electronAPI && !isOnline && (
+                            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-4 rounded-lg text-sm flex items-center gap-3">
+                                <WifiOff className="h-5 w-5 flex-shrink-0" />
+                                <span>You are offline. Sign in requires a connection to the server. If you had a previous session, the app will use cached data automatically.</span>
+                            </div>
+                        )}
 
                         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                             {error && (

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus, X } from 'lucide-react';
+import { Users as UsersIcon, PlusCircle, Trash2, Shield, AlertCircle, UserPlus, X, WifiOff } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Select } from '../components/Select';
 
@@ -21,6 +22,7 @@ interface User {
 
 export function Groups() {
     const { user: currentUser } = useAuth();
+    const { isOnline } = useOffline();
     const toast = useToast();
     const [groups, setGroups] = useState<Group[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -150,9 +152,11 @@ export function Groups() {
                 </div>
                 <button
                     onClick={() => setIsAdding(!isAdding)}
-                    className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
+                    disabled={!isOnline && !!window.electronAPI}
+                    className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!isOnline && window.electronAPI ? 'Requires connection' : undefined}
                 >
-                    <PlusCircle className="h-4 w-4 mr-2" />
+                    {!isOnline && window.electronAPI ? <WifiOff className="h-4 w-4 mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
                     {isAdding ? 'Cancel' : 'Create Group'}
                 </button>
             </div>
