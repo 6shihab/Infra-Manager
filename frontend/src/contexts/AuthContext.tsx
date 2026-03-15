@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
 import { queryClient } from '../main';
+import { useOffline } from './OfflineContext';
 
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -48,6 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             api.get('/auth/me')
                 .then(res => {
                     setUser(res.data);
+                    // Cache session in Electron for offline access + sync engine token
+                    if (window.electronAPI) {
+                        window.electronAPI.cacheSession(token, res.data).catch(() => {});
+                    }
                 })
                 .catch(() => {
                     logout();
@@ -69,16 +74,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => events.forEach(e => window.removeEventListener(e, resetActivity));
     }, []);
 
-    // Check inactivity every minute while logged in
+    // Check inactivity every minute while logged in (skip when offline in Electron)
+    const { isOnline } = useOffline();
     useEffect(() => {
         if (!token) return;
         const interval = setInterval(() => {
+            // Don't auto-logout while offline — user needs cached session
+            if (!isOnline) return;
             if (Date.now() - lastActivityRef.current > INACTIVITY_TIMEOUT_MS) {
                 logout();
             }
         }, 60_000);
         return () => clearInterval(interval);
-    }, [token, logout]);
+    }, [token, logout, isOnline]);
 
     // Auto-logout on 401 responses
     useEffect(() => {

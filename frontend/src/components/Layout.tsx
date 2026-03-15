@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
+import { OfflineBanner } from './OfflineBanner';
 
 export function Layout() {
     return (
@@ -12,6 +13,7 @@ export function Layout() {
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden z-10 relative">
                 <Navbar />
+                <OfflineBanner />
 
                 <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
                     <div className="mx-auto max-w-7xl animate-in fade-in duration-500">

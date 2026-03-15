@@ -1,11 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
+import { useOffline } from '../contexts/OfflineContext';
 
 export function Navbar() {
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
+    const { triggerSync, pendingSyncCount, isOnline } = useOffline();
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    // Listen for sync completion to stop the spin animation
+    useEffect(() => {
+        if (!window.electronAPI) return;
+        const unsub = window.electronAPI.onSyncComplete(() => {
+            setIsSyncing(false);
+        });
+        return unsub;
+    }, []);
+
+    const handleSync = useCallback(() => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        triggerSync();
+        // Auto-stop after 30s in case sync:complete never fires
+        setTimeout(() => setIsSyncing(false), 30_000);
+    }, [isSyncing, triggerSync]);
 
     const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && searchQuery.trim() !== '') {
@@ -33,6 +53,21 @@ export function Navbar() {
             </div>
 
             <div className="ml-4 flex items-center md:ml-6 gap-4">
+                {window.electronAPI && (
+                    <button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className="relative p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:cursor-wait"
+                        title={isSyncing ? 'Syncing...' : pendingSyncCount > 0 ? `Sync now (${pendingSyncCount} pending)` : isOnline ? 'Sync with server' : 'Sync (offline)'}
+                    >
+                        <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {pendingSyncCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-black">
+                                {pendingSyncCount}
+                            </span>
+                        )}
+                    </button>
+                )}
                 <NotificationDropdown />
             </div>
         </header>

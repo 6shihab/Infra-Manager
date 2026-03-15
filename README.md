@@ -73,6 +73,7 @@ npm run dev            # http://localhost:5173
 - **Audit Logs** — Every create/update/delete is logged with user, action, resource type, and timestamp; visible to superusers only
 - **Two-Factor Authentication** — TOTP-based 2FA with QR code setup, backup recovery codes, and admin override for locked-out users
 - **Settings** — Key-value application configuration store
+- **Offline Mode (Desktop)** — Full offline CRUD via local SQLite database; auto-detect connectivity with "Offline Mode" banner; changes sync to server when connection restores (server-wins conflict resolution); cached credentials and session for offline access
 
 ## Project Structure
 
@@ -95,8 +96,15 @@ Infra-Manager/
 │       ├── App.tsx           # Route definitions
 │       ├── pages/            # Full-page components
 │       ├── components/       # Layout, Navbar, Sidebar, ProtectedRoute
-│       ├── contexts/         # AuthContext (JWT state)
-│       └── utils/api.ts      # Axios client with auth interceptor
+│       ├── contexts/         # AuthContext, OfflineContext, NotificationsContext
+│       └── utils/            # api.ts (Axios), offlineAdapter.ts (offline routing)
+├── desktop/
+│   └── src/
+│       ├── main.ts           # Electron main process, IPC, sync engine startup
+│       ├── preload.ts        # IPC bridge (online + offline methods)
+│       ├── db/               # SQLite database layer (sql.js), migrations, repositories
+│       ├── ipc/              # Offline API dispatcher (REST→SQLite routing)
+│       └── sync/             # Connectivity monitor, full sync, queue drainer
 └── docker-compose.yml
 ```
 

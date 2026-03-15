@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare, WifiOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOffline } from '../contexts/OfflineContext';
 import { Select } from '../components/Select';
 import { TOTPSetupModal } from '../components/TOTPSetupModal';
 import { TOTPDisableModal } from '../components/TOTPDisableModal';
@@ -23,6 +24,8 @@ interface UserOption {
 
 export function Settings() {
     const { user, refreshUser } = useAuth();
+    const { isOnline } = useOffline();
+    const offlineElectron = !isOnline && !!window.electronAPI;
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -268,8 +271,8 @@ export function Settings() {
                         </div>
                     </div>
                     <div className="mt-4 flex justify-end">
-                        <button onClick={handleSelfPwChange} disabled={selfPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
-                            {selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
+                        <button onClick={handleSelfPwChange} disabled={selfPwSaving || offlineElectron} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50" title={offlineElectron ? 'Requires connection' : undefined}>
+                            {offlineElectron ? <><WifiOff className="mr-2 h-4 w-4" />Requires Connection</> : selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
                         </button>
                     </div>
                 </div>
@@ -296,14 +299,18 @@ export function Settings() {
                         <div className="flex flex-wrap gap-3">
                             <button
                                 onClick={() => setBackupCodesOpen(true)}
-                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
                             >
                                 <KeySquare className="mr-2 h-4 w-4" />
                                 Regenerate Backup Codes
                             </button>
                             <button
                                 onClick={() => setTotpDisableOpen(true)}
-                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors"
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
                             >
                                 <ShieldOff className="mr-2 h-4 w-4" />
                                 Disable 2FA
@@ -317,10 +324,12 @@ export function Settings() {
                         </p>
                         <button
                             onClick={() => setTotpSetupOpen(true)}
-                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                            disabled={offlineElectron}
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            title={offlineElectron ? 'Requires connection' : undefined}
                         >
-                            <Shield className="mr-2 h-4 w-4" />
-                            Enable Two-Factor Authentication
+                            {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
+                            {offlineElectron ? 'Requires Connection' : 'Enable Two-Factor Authentication'}
                         </button>
                     </div>
                 )}

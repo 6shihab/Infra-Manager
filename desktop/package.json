@@ -8,10 +8,12 @@
     "start": "npm run build && node launch.js",
     "gen-icon": "node gen-icon.js",
     "dist": "node gen-icon.js && npm run build && node -e \"const {execSync}=require('child_process'),env={...process.env};delete env.ELECTRON_RUN_AS_NODE;execSync('electron-builder --win',{stdio:'inherit',env})\"",
-    "build:all": "cd ../frontend && npm run build && cd ../desktop && npm run dist"
+    "build:all": "cd ../frontend && npm run build && cd ../desktop && npm run build",
+    "out": "cd ../frontend && npm run build && cd ../desktop && npm run dist"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "sql.js": "^1.11.0"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

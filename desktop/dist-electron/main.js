@@ -36,6 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const config_1 = require("./config");
+const index_1 = require("./ipc/index");
+const index_2 = require("./db/index");
+const engine_1 = require("./sync/engine");
 // Prevent multiple instances
 if (!electron_1.app.requestSingleInstanceLock()) {
     electron_1.app.quit();
@@ -44,6 +47,7 @@ if (!electron_1.app.requestSingleInstanceLock()) {
 let win = null;
 let tray = null;
 let isQuitting = false;
+let syncEngine = null;
 // ── Window creation ─────────────────────────────────────────────────────────
 function createWindow() {
     win = new electron_1.BrowserWindow({
@@ -149,6 +153,8 @@ function registerIpcHandlers() {
     electron_1.ipcMain.handle('config:getApiUrl', () => (0, config_1.readConfig)().apiUrl);
     electron_1.ipcMain.handle('config:setApiUrl', (_event, url) => {
         (0, config_1.writeConfig)({ apiUrl: url });
+        if (syncEngine)
+            syncEngine.updateApiUrl(url);
     });
     electron_1.ipcMain.handle('app:getVersion', () => electron_1.app.getVersion());
     electron_1.ipcMain.on('notify:show', (_event, title, body) => {
@@ -175,13 +181,27 @@ electron_1.app.on('second-instance', () => {
     }
 });
 // ── App lifecycle ─────────────────────────────────────────────────────────────
-electron_1.app.whenReady().then(() => {
+electron_1.app.whenReady().then(async () => {
     registerIpcHandlers();
+    (0, index_1.registerOfflineIpcHandlers)();
+    // Initialize SQLite database
+    await (0, index_2.getDb)();
+    (0, index_2.startAutoSave)();
     createWindow();
+    if (win)
+        (0, index_1.setMainWindow)(win);
     createTray();
+    // Start sync engine
+    const config = (0, config_1.readConfig)();
+    syncEngine = new engine_1.SyncEngine(config.apiUrl);
+    (0, index_1.setSyncEngine)(syncEngine);
+    await syncEngine.start();
 });
 electron_1.app.on('before-quit', () => {
     isQuitting = true;
+    if (syncEngine)
+        syncEngine.stop();
+    (0, index_2.closeDb)();
 });
 electron_1.app.on('window-all-closed', () => {
     // On Windows, keep the process alive so the tray icon works
