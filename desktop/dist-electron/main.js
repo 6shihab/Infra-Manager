@@ -194,6 +194,7 @@ electron_1.app.whenReady().then(async () => {
     // Start sync engine
     const config = (0, config_1.readConfig)();
     syncEngine = new engine_1.SyncEngine(config.apiUrl);
+    (0, index_1.setSyncEngine)(syncEngine);
     await syncEngine.start();
 });
 electron_1.app.on('before-quit', () => {

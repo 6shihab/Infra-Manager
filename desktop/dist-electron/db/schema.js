@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runMigrations = runMigrations;
 const _001_initial_1 = require("./migrations/001_initial");
+const _002_sync_log_1 = require("./migrations/002_sync_log");
 const migrations = [
     { version: 1, name: 'initial_schema', up: _001_initial_1.migration001 },
+    { version: 2, name: 'sync_log_table', up: _002_sync_log_1.migration002 },
 ];
 function runMigrations(db) {
     // Ensure _sync_meta table exists for tracking schema version

@@ -1,6 +1,8 @@
 import * as http from 'http';
 import * as https from 'https';
-import * as url from 'url';
+import { getDb } from '../db/index';
+import * as syncLogRepo from '../db/repositories/syncLog';
+import { saveDb } from '../db/index';
 
 export class ConnectivityMonitor {
     private _isOnline = true;
@@ -20,8 +22,19 @@ export class ConnectivityMonitor {
         this.onChangeCallback = callback;
     }
 
-    start(): void {
-        this.check();
+    /** Run a single connectivity check (awaitable) */
+    async check(): Promise<void> {
+        try {
+            const reachable = await this.ping();
+            await this.setOnline(reachable);
+        } catch {
+            await this.setOnline(false);
+        }
+    }
+
+    /** Start the periodic polling interval (does NOT run an immediate check) */
+    startPolling(): void {
+        if (this.intervalId) return;
         this.intervalId = setInterval(() => this.check(), 15_000);
     }
 
@@ -36,19 +49,16 @@ export class ConnectivityMonitor {
         this.apiUrl = newUrl;
     }
 
-    async check(): Promise<void> {
-        try {
-            const reachable = await this.ping();
-            this.setOnline(reachable);
-        } catch {
-            this.setOnline(false);
-        }
-    }
-
     private ping(): Promise<boolean> {
         return new Promise((resolve) => {
             const healthUrl = `${this.apiUrl.replace(/\/+$/, '')}/health`;
-            const parsed = new URL(healthUrl);
+            let parsed: URL;
+            try {
+                parsed = new URL(healthUrl);
+            } catch {
+                resolve(false);
+                return;
+            }
             const lib = parsed.protocol === 'https:' ? https : http;
 
             const req = lib.request(
@@ -60,7 +70,6 @@ export class ConnectivityMonitor {
                     timeout: 5000,
                 },
                 (res) => {
-                    // Any response (even 4xx/5xx) means server is reachable
                     res.resume();
                     resolve(true);
                 }
@@ -76,12 +85,19 @@ export class ConnectivityMonitor {
         });
     }
 
-    private setOnline(online: boolean): void {
+    private async setOnline(online: boolean): Promise<void> {
         const changed = this._isOnline !== online;
         this._isOnline = online;
-        if (changed && this.onChangeCallback) {
+        if (changed) {
             console.log(`[Connectivity] Status changed: ${online ? 'ONLINE' : 'OFFLINE'}`);
-            this.onChangeCallback(online);
+            try {
+                const db = await getDb();
+                syncLogRepo.addLog(db, online ? 'info' : 'warn', online ? 'Connection restored' : 'Connection lost');
+                saveDb();
+            } catch { /* ignore logging errors during startup */ }
+            if (this.onChangeCallback) {
+                this.onChangeCallback(online);
+            }
         }
     }
 }

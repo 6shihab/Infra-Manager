@@ -36,6 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConnectivityMonitor = void 0;
 const http = __importStar(require("http"));
 const https = __importStar(require("https"));
+const index_1 = require("../db/index");
+const syncLogRepo = __importStar(require("../db/repositories/syncLog"));
+const index_2 = require("../db/index");
 class ConnectivityMonitor {
     _isOnline = true;
     intervalId = null;
@@ -50,8 +53,20 @@ class ConnectivityMonitor {
     onChange(callback) {
         this.onChangeCallback = callback;
     }
-    start() {
-        this.check();
+    /** Run a single connectivity check (awaitable) */
+    async check() {
+        try {
+            const reachable = await this.ping();
+            await this.setOnline(reachable);
+        }
+        catch {
+            await this.setOnline(false);
+        }
+    }
+    /** Start the periodic polling interval (does NOT run an immediate check) */
+    startPolling() {
+        if (this.intervalId)
+            return;
         this.intervalId = setInterval(() => this.check(), 15_000);
     }
     stop() {
@@ -63,19 +78,17 @@ class ConnectivityMonitor {
     updateApiUrl(newUrl) {
         this.apiUrl = newUrl;
     }
-    async check() {
-        try {
-            const reachable = await this.ping();
-            this.setOnline(reachable);
-        }
-        catch {
-            this.setOnline(false);
-        }
-    }
     ping() {
         return new Promise((resolve) => {
             const healthUrl = `${this.apiUrl.replace(/\/+$/, '')}/health`;
-            const parsed = new URL(healthUrl);
+            let parsed;
+            try {
+                parsed = new URL(healthUrl);
+            }
+            catch {
+                resolve(false);
+                return;
+            }
             const lib = parsed.protocol === 'https:' ? https : http;
             const req = lib.request({
                 hostname: parsed.hostname,
@@ -84,7 +97,6 @@ class ConnectivityMonitor {
                 method: 'GET',
                 timeout: 5000,
             }, (res) => {
-                // Any response (even 4xx/5xx) means server is reachable
                 res.resume();
                 resolve(true);
             });
@@ -96,12 +108,20 @@ class ConnectivityMonitor {
             req.end();
         });
     }
-    setOnline(online) {
+    async setOnline(online) {
         const changed = this._isOnline !== online;
         this._isOnline = online;
-        if (changed && this.onChangeCallback) {
+        if (changed) {
             console.log(`[Connectivity] Status changed: ${online ? 'ONLINE' : 'OFFLINE'}`);
-            this.onChangeCallback(online);
+            try {
+                const db = await (0, index_1.getDb)();
+                syncLogRepo.addLog(db, online ? 'info' : 'warn', online ? 'Connection restored' : 'Connection lost');
+                (0, index_2.saveDb)();
+            }
+            catch { /* ignore logging errors during startup */ }
+            if (this.onChangeCallback) {
+                this.onChangeCallback(online);
+            }
         }
     }
 }

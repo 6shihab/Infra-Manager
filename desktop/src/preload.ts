@@ -52,4 +52,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('sync:progress', handler);
     return () => { ipcRenderer.removeListener('sync:progress', handler); };
   },
+
+  /** Cache session after login — saves token + user to SQLite, triggers sync */
+  cacheSession: (token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean; totp_enabled: boolean }): Promise<any> =>
+    ipcRenderer.invoke('offline:cacheSession', token, user),
+
+  /** Get recent sync logs */
+  getSyncLogs: (limit?: number): Promise<Array<{ id: number; timestamp: string; level: string; message: string }>> =>
+    ipcRenderer.invoke('offline:getSyncLogs', limit),
+
+  /** Clear sync logs */
+  clearSyncLogs: (): Promise<void> =>
+    ipcRenderer.invoke('offline:clearSyncLogs'),
 });

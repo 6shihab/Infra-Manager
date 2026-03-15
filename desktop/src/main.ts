@@ -10,7 +10,7 @@ import {
 } from 'electron';
 import * as path from 'path';
 import { readConfig, writeConfig } from './config';
-import { registerOfflineIpcHandlers, setMainWindow } from './ipc/index';
+import { registerOfflineIpcHandlers, setMainWindow, setSyncEngine } from './ipc/index';
 import { getDb, startAutoSave, closeDb } from './db/index';
 import { SyncEngine } from './sync/engine';
 
@@ -194,6 +194,7 @@ app.whenReady().then(async () => {
   // Start sync engine
   const config = readConfig();
   syncEngine = new SyncEngine(config.apiUrl);
+  setSyncEngine(syncEngine);
   await syncEngine.start();
 });
 

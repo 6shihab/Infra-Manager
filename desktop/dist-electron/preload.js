@@ -34,4 +34,10 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
         electron_1.ipcRenderer.on('sync:progress', handler);
         return () => { electron_1.ipcRenderer.removeListener('sync:progress', handler); };
     },
+    /** Cache session after login — saves token + user to SQLite, triggers sync */
+    cacheSession: (token, user) => electron_1.ipcRenderer.invoke('offline:cacheSession', token, user),
+    /** Get recent sync logs */
+    getSyncLogs: (limit) => electron_1.ipcRenderer.invoke('offline:getSyncLogs', limit),
+    /** Clear sync logs */
+    clearSyncLogs: () => electron_1.ipcRenderer.invoke('offline:clearSyncLogs'),
 });

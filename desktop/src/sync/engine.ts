@@ -1,10 +1,10 @@
-import { Database } from 'sql.js';
 import { getDb, saveDb } from '../db/index';
 import { ConnectivityMonitor } from './connectivity';
 import { FullSync } from './fullSync';
 import { QueueDrainer } from './queueDrainer';
 import { setOnlineStatus, notifyRenderer, onSyncRequested } from '../ipc/index';
 import * as sessionRepo from '../db/repositories/session';
+import * as syncLogRepo from '../db/repositories/syncLog';
 
 export class SyncEngine {
     private connectivity: ConnectivityMonitor;
@@ -24,14 +24,18 @@ export class SyncEngine {
     }
 
     async start(): Promise<void> {
-        // Try to load cached token
+        // Load cached token first
         const db = await getDb();
         const session = sessionRepo.getSession(db);
         if (session) {
             this.token = session.token;
             this.fullSync.updateCredentials(this.apiUrl, this.token);
             this.queueDrainer.updateCredentials(this.apiUrl, this.token);
+            syncLogRepo.addLog(db, 'info', `Loaded cached session for ${session.email}`);
+        } else {
+            syncLogRepo.addLog(db, 'info', 'No cached session found — waiting for login');
         }
+        saveDb();
 
         // Listen for connectivity changes
         this.connectivity.onChange(async (isOnline) => {
@@ -46,8 +50,9 @@ export class SyncEngine {
             await this.runSync();
         });
 
-        // Start connectivity monitoring
-        this.connectivity.start();
+        // Await first connectivity check before deciding on initial sync
+        await this.connectivity.check();
+        this.connectivity.startPolling();
 
         // Start periodic sync (every 5 minutes while online)
         this.periodicSyncInterval = setInterval(async () => {
@@ -56,10 +61,12 @@ export class SyncEngine {
             }
         }, 5 * 60 * 1000);
 
-        // Initial sync if online
+        // Initial sync if online and we have a token
         if (this.connectivity.isOnline && this.token) {
-            // Delay initial sync slightly to let the app finish loading
-            setTimeout(() => this.runFullSync(), 3000);
+            const db2 = await getDb();
+            syncLogRepo.addLog(db2, 'info', 'Online with cached token — starting initial sync');
+            saveDb();
+            setTimeout(() => this.runFullSync(), 2000);
         }
     }
 
@@ -84,8 +91,15 @@ export class SyncEngine {
         this.queueDrainer.updateCredentials(this.apiUrl, token);
     }
 
+    /** Public method callable from IPC handler after login */
+    async triggerFullSync(): Promise<void> {
+        await this.runFullSync();
+    }
+
     private async onReconnect(): Promise<void> {
-        console.log('[SyncEngine] Reconnected. Starting sync...');
+        const db = await getDb();
+        syncLogRepo.addLog(db, 'info', 'Connection restored — starting sync');
+        saveDb();
         await this.runSync();
     }
 
@@ -93,14 +107,17 @@ export class SyncEngine {
         if (this.isSyncing || !this.token) return;
         this.isSyncing = true;
 
+        const db = await getDb();
         try {
-            const db = await getDb();
+            syncLogRepo.addLog(db, 'info', 'Sync started (drain queue + full sync)');
+            saveDb();
 
             // First: drain the queue (push local changes to server)
             const drainResult = await this.queueDrainer.drain(db);
 
             if (drainResult.authFailed) {
-                // Token expired — notify renderer
+                syncLogRepo.addLog(db, 'error', 'Sync aborted: authentication failed');
+                saveDb();
                 notifyRenderer('sync:auth-required');
                 return;
             }
@@ -108,13 +125,17 @@ export class SyncEngine {
             // Then: full sync (pull server state)
             await this.fullSync.run(db);
 
-            // Notify renderer that sync is complete
+            syncLogRepo.addLog(db, 'info', 'Sync completed successfully');
+            saveDb();
             notifyRenderer('sync:complete');
         } catch (err: any) {
             if (err.message === 'UNAUTHORIZED') {
+                syncLogRepo.addLog(db, 'error', 'Sync failed: token expired');
+                saveDb();
                 notifyRenderer('sync:auth-required');
             } else {
-                console.error('[SyncEngine] Sync error:', err.message);
+                syncLogRepo.addLog(db, 'error', `Sync failed: ${err.message}`);
+                saveDb();
             }
         } finally {
             this.isSyncing = false;
@@ -124,15 +145,24 @@ export class SyncEngine {
     private async runFullSync(): Promise<void> {
         if (this.isSyncing || !this.token) return;
         this.isSyncing = true;
+        const db = await getDb();
         try {
-            const db = await getDb();
+            syncLogRepo.addLog(db, 'info', 'Full sync started');
+            saveDb();
+
             await this.fullSync.run(db);
+
+            syncLogRepo.addLog(db, 'info', 'Full sync completed');
+            saveDb();
             notifyRenderer('sync:complete');
         } catch (err: any) {
             if (err.message === 'UNAUTHORIZED') {
+                syncLogRepo.addLog(db, 'error', 'Full sync failed: token expired');
+                saveDb();
                 notifyRenderer('sync:auth-required');
             } else {
-                console.error('[SyncEngine] Full sync error:', err.message);
+                syncLogRepo.addLog(db, 'error', `Full sync failed: ${err.message}`);
+                saveDb();
             }
         } finally {
             this.isSyncing = false;

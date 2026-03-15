@@ -17,6 +17,11 @@ declare global {
       onConnectivityChange: (callback: (isOnline: boolean) => void) => () => void;
       onSyncComplete: (callback: () => void) => () => void;
       onSyncProgress: (callback: (progress: { synced: number; total: number }) => void) => () => void;
+
+      // Session & sync log
+      cacheSession: (token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean; totp_enabled: boolean }) => Promise<any>;
+      getSyncLogs: (limit?: number) => Promise<Array<{ id: number; timestamp: string; level: string; message: string }>>;
+      clearSyncLogs: () => Promise<void>;
     };
   }
 }

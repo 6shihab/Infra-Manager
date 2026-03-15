@@ -1,5 +1,6 @@
 import { Database } from 'sql.js';
 import { migration001 } from './migrations/001_initial';
+import { migration002 } from './migrations/002_sync_log';
 
 interface Migration {
     version: number;
@@ -9,6 +10,7 @@ interface Migration {
 
 const migrations: Migration[] = [
     { version: 1, name: 'initial_schema', up: migration001 },
+    { version: 2, name: 'sync_log_table', up: migration002 },
 ];
 
 export function runMigrations(db: Database): void {

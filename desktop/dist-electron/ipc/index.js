@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setMainWindow = setMainWindow;
+exports.setSyncEngine = setSyncEngine;
 exports.notifyRenderer = notifyRenderer;
 exports.registerOfflineIpcHandlers = registerOfflineIpcHandlers;
 exports.setOnlineStatus = setOnlineStatus;
@@ -43,9 +44,16 @@ const electron_1 = require("electron");
 const index_1 = require("../db/index");
 const offlineApi_1 = require("./offlineApi");
 const syncQueueRepo = __importStar(require("../db/repositories/syncQueue"));
+const sessionRepo = __importStar(require("../db/repositories/session"));
+const syncLogRepo = __importStar(require("../db/repositories/syncLog"));
+const index_2 = require("../db/index");
 let mainWindow = null;
+let _syncEngine = null;
 function setMainWindow(win) {
     mainWindow = win;
+}
+function setSyncEngine(engine) {
+    _syncEngine = engine;
 }
 function notifyRenderer(channel, ...args) {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -60,7 +68,6 @@ function registerOfflineIpcHandlers() {
     });
     // Get connectivity status (will be updated by sync engine)
     electron_1.ipcMain.handle('offline:getStatus', () => {
-        // This is set by the sync engine via setOnlineStatus
         return { isOnline: _isOnline };
     });
     // Get pending sync queue count
@@ -73,6 +80,41 @@ function registerOfflineIpcHandlers() {
         if (_onSyncRequested) {
             await _onSyncRequested();
         }
+        return { ok: true };
+    });
+    // Cache session after login — saves token + user to SQLite, updates sync engine
+    electron_1.ipcMain.handle('offline:cacheSession', async (_event, token, user) => {
+        const db = await (0, index_1.getDb)();
+        sessionRepo.saveSession(db, {
+            user_id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            is_superuser: user.is_superuser,
+            totp_enabled: user.totp_enabled,
+            token,
+            cached_at: new Date().toISOString(),
+        });
+        syncLogRepo.addLog(db, 'info', `Session cached for ${user.email}`);
+        (0, index_2.saveDb)();
+        // Update sync engine token and trigger sync
+        if (_syncEngine) {
+            _syncEngine.updateToken(token);
+            // Trigger a full sync now that we have a valid token
+            if (_isOnline) {
+                _syncEngine.triggerFullSync();
+            }
+        }
+        return { ok: true };
+    });
+    // Get sync logs
+    electron_1.ipcMain.handle('offline:getSyncLogs', async (_event, limit) => {
+        const db = await (0, index_1.getDb)();
+        return syncLogRepo.getRecentLogs(db, limit || 50);
+    });
+    // Clear sync logs
+    electron_1.ipcMain.handle('offline:clearSyncLogs', async () => {
+        const db = await (0, index_1.getDb)();
+        syncLogRepo.clearLogs(db);
         return { ok: true };
     });
 }

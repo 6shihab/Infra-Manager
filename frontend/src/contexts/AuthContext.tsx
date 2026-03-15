@@ -49,6 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             api.get('/auth/me')
                 .then(res => {
                     setUser(res.data);
+                    // Cache session in Electron for offline access + sync engine token
+                    if (window.electronAPI) {
+                        window.electronAPI.cacheSession(token, res.data).catch(() => {});
+                    }
                 })
                 .catch(() => {
                     logout();

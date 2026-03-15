@@ -3,6 +3,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { saveDb } from '../db/index';
 import * as syncQueueRepo from '../db/repositories/syncQueue';
+import * as syncLogRepo from '../db/repositories/syncLog';
 import { notifyRenderer } from '../ipc/index';
 
 const MAX_RETRIES = 5;
@@ -73,7 +74,7 @@ export class QueueDrainer {
                 return { success: true, authFailed: false };
             }
 
-            console.log(`[QueueDrainer] Draining ${entries.length} pending entries...`);
+            syncLogRepo.addLog(db, 'info', `Draining ${entries.length} pending queue entries...`);
             const tempIdMap = new Map<string, string>();
             let synced = 0;
 
@@ -98,7 +99,7 @@ export class QueueDrainer {
                     if (response.status === 401) {
                         // Auth failed — stop draining
                         syncQueueRepo.markPendingRetry(db, entry.id);
-                        console.error('[QueueDrainer] Auth failed. Stopping drain.');
+                        syncLogRepo.addLog(db, 'error', 'Queue drain stopped: authentication failed');
                         return { success: false, authFailed: true };
                     }
 
@@ -125,7 +126,7 @@ export class QueueDrainer {
                         // Client error — mark as failed permanently
                         const errMsg = response.data?.detail || JSON.stringify(response.data) || `HTTP ${response.status}`;
                         syncQueueRepo.markFailed(db, entry.id, errMsg);
-                        console.warn(`[QueueDrainer] Entry ${entry.id} failed permanently: ${errMsg}`);
+                        syncLogRepo.addLog(db, 'warn', `Queue entry failed: ${entry.method} ${endpoint} — ${errMsg}`);
                     } else {
                         // Server error — retry later
                         if (entry.retry_count >= MAX_RETRIES) {
@@ -149,7 +150,7 @@ export class QueueDrainer {
             syncQueueRepo.cleanCompleted(db);
             saveDb();
 
-            console.log(`[QueueDrainer] Drain completed. ${synced}/${entries.length} synced.`);
+            syncLogRepo.addLog(db, 'info', `Queue drain completed: ${synced}/${entries.length} synced`);
             return { success: true, authFailed: false };
         } finally {
             this.isDraining = false;
