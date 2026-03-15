@@ -18,6 +18,11 @@ build/
 .vite/
 *.tsbuildinfo
 
+# Desktop / Electron
+desktop/dist-electron/
+desktop/node_modules/
+desktop/assets/favicon.png
+
 # Python / Backend
 backend/**/__pycache__/
 *.py[cod]
@@ -65,6 +70,14 @@ ehthumbs.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
 CLAUDE.md
+# Desktop build output
 desktop/release/
+
+# SQLite databases (desktop offline)
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude / Playwright
 .claude/
 .playwright-mcp/
