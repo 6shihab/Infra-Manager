@@ -1,3 +1,4 @@
+import uuid
 import logging
 from sqlalchemy.orm import Session
 from app.models import AuditLog, User
@@ -6,11 +7,11 @@ logger = logging.getLogger(__name__)
 
 def log_audit(
     db: Session,
-    user_id: int | None,
+    user_id: uuid.UUID | None,
     action: str,
     resource_type: str,
     resource_name: str | None = None,
-    target_user_ids: list[int] | None = None,
+    target_user_ids: list[uuid.UUID] | None = None,
 ):
     try:
         audit_log = AuditLog(

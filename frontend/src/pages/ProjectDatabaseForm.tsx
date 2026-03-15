@@ -11,7 +11,7 @@ export function ProjectDatabaseForm() {
     const queryClient = useQueryClient();
     const toast = useToast();
 
-    const [selectedDbEngineId, setSelectedDbEngineId] = useState<number | ''>('');
+    const [selectedDbEngineId, setSelectedDbEngineId] = useState<string>('');
     const [overrideCredentials, setOverrideCredentials] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -31,7 +31,7 @@ export function ProjectDatabaseForm() {
     const attachMutation = useMutation({
         mutationFn: async () => {
             const payload = {
-                database_engine_id: Number(selectedDbEngineId),
+                database_engine_id: selectedDbEngineId,
                 db_name: formData.db_name,
                 ...(overrideCredentials ? { username: formData.username, password: formData.password } : {})
             };
@@ -88,7 +88,7 @@ export function ProjectDatabaseForm() {
                     <select
                         required
                         value={selectedDbEngineId}
-                        onChange={(e) => setSelectedDbEngineId(Number(e.target.value))}
+                        onChange={(e) => setSelectedDbEngineId(e.target.value)}
                         className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
                     >
                         <option value="" disabled>Select a global engine...</option>

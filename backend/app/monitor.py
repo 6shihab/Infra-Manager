@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import logging
 import socket
+import uuid
 import httpx
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import update as sa_update, select
@@ -14,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 logger = logging.getLogger(__name__)
 
 
-def _project_member_ids(db: Session, project_id: int) -> list[int]:
+def _project_member_ids(db: Session, project_id: uuid.UUID) -> list[uuid.UUID]:
     from app.models import Project as ProjectModel
     project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
     creator_id = project.created_by if project and project.created_by else None
@@ -24,7 +25,7 @@ def _project_member_ids(db: Session, project_id: int) -> list[int]:
     ).all()
     group_ids = [a.group_id for a in accesses]
 
-    user_ids: set[int] = set()
+    user_ids: set[uuid.UUID] = set()
     if creator_id:
         user_ids.add(creator_id)
     if group_ids:
@@ -156,7 +157,7 @@ async def run_uptime_checks():
                             select(ProjectServer.project_id).where(ProjectServer.server_id == server.id)
                         ).all()
                     ]
-                    notified: set[int] = set()
+                    notified: set[uuid.UUID] = set()
                     for pid in project_ids_with_server:
                         for uid in _project_member_ids(db, pid):
                             notified.add(uid)

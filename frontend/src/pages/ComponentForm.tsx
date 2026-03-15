@@ -82,7 +82,7 @@ export function ComponentForm() {
             name,
             type,
             custom_fields: fieldsDict,
-            project_id: Number(projectId)
+            project_id: projectId
         };
 
         try {

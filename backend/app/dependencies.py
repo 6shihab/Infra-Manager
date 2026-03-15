@@ -1,3 +1,4 @@
+import uuid
 import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -54,12 +55,12 @@ def get_current_active_superuser(current_user: models.User = Depends(get_current
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges")
     return current_user
 
-def get_accessible_project_ids(user: models.User, db: Session) -> set[int] | None:
+def get_accessible_project_ids(user: models.User, db: Session) -> set[uuid.UUID] | None:
     """Return project IDs the user can access (creator or group member). Superusers get None (= no filter)."""
     if user.is_superuser:
         return None
 
-    accessible: set[int] = set()
+    accessible: set[uuid.UUID] = set()
 
     created = db.query(models.Project.id).filter(
         models.Project.created_by == user.id,
@@ -95,7 +96,7 @@ def require_project_role(required_roles: list[str]):
     Dependency to check if the current user has access to a specific project.
     Expects project_id as a path parameter or query parameter.
     """
-    def role_checker(project_id: int, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    def role_checker(project_id: uuid.UUID, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
         if current_user.is_superuser:
             return True
 

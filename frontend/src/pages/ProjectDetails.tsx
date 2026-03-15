@@ -93,10 +93,10 @@ export function ProjectDetails() {
     const [loading, setLoading] = useState(true);
 
     // Custom Modal State
-    const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: number | null, title: string, name: string } | null>(null);
+    const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: string | null, title: string, name: string } | null>(null);
     const [deleting, setDeleting] = useState(false);
-    const [confirmRemoveGroup, setConfirmRemoveGroup] = useState<{ id: number; name: string } | null>(null);
-    const [confirmRemoveUser, setConfirmRemoveUser] = useState<{ id: number; name: string } | null>(null);
+    const [confirmRemoveGroup, setConfirmRemoveGroup] = useState<{ id: string; name: string } | null>(null);
+    const [confirmRemoveUser, setConfirmRemoveUser] = useState<{ id: string; name: string } | null>(null);
 
     // Access Control State
     const { user } = useAuth();
@@ -141,7 +141,7 @@ export function ProjectDetails() {
         }
     };
 
-    const handleRemoveGroup = async (groupId: number) => {
+    const handleRemoveGroup = async (groupId: string) => {
         try {
             await api.delete(`/projects/${id}/groups/${groupId}`);
             const res = await api.get(`/projects/${id}`);
@@ -167,7 +167,7 @@ export function ProjectDetails() {
         }
     };
 
-    const handleRemoveUser = async (userId: number) => {
+    const handleRemoveUser = async (userId: string) => {
         try {
             await api.delete(`/projects/${id}/users/${userId}`);
             const res = await api.get(`/projects/${id}`);
@@ -209,10 +209,10 @@ export function ProjectDetails() {
         }
     };
 
-    const handleDeleteProject = () => setDeleteConfig({ type: 'project', id: Number(id), title: 'Delete Project', name: project?.name || '' });
-    const handleDeleteServer = (serverId: number, serverName: string) => setDeleteConfig({ type: 'server', id: serverId, title: 'Remove Server', name: serverName });
-    const handleDeleteDatabase = (dbId: number, dbName: string) => setDeleteConfig({ type: 'database', id: dbId, title: 'Remove Database', name: dbName });
-    const handleDeleteComponent = (compId: number, compName: string) => setDeleteConfig({ type: 'component', id: compId, title: 'Delete Component', name: compName });
+    const handleDeleteProject = () => setDeleteConfig({ type: 'project', id: id!, title: 'Delete Project', name: project?.name || '' });
+    const handleDeleteServer = (serverId: string, serverName: string) => setDeleteConfig({ type: 'server', id: serverId, title: 'Remove Server', name: serverName });
+    const handleDeleteDatabase = (dbId: string, dbName: string) => setDeleteConfig({ type: 'database', id: dbId, title: 'Remove Database', name: dbName });
+    const handleDeleteComponent = (compId: string, compName: string) => setDeleteConfig({ type: 'component', id: compId, title: 'Delete Component', name: compName });
 
     const handleSaveNote = async () => {
         setSavingNote(true);
@@ -235,7 +235,7 @@ export function ProjectDetails() {
                 console.error("Failed to load project from backend, falling back to mock", err);
                 // Fallback Mock data for project #id
                 setProject({
-                    id: Number(id),
+                    id: id,
                     name: "Sample Project (Fallback)",
                     description: "Database might be empty or unavailable.",
                     environment: "Dev",

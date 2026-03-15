@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 
 
-def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
+def _require_editor_or_admin(user: models.User, project_id: uuid.UUID, db: Session):
     """Raise 403 if user is not superuser, project creator, or Editor/Admin on this project."""
     if user.is_superuser:
         return
@@ -38,7 +39,7 @@ def _require_editor_or_admin(user: models.User, project_id: int, db: Session):
     raise HTTPException(status_code=403, detail="Viewer role cannot modify components")
 
 
-def _require_admin(user: models.User, project_id: int, db: Session):
+def _require_admin(user: models.User, project_id: uuid.UUID, db: Session):
     """Raise 403 if user is not superuser, project creator, or Admin on this project."""
     if user.is_superuser:
         return
@@ -85,7 +86,7 @@ def create_component(request: Request, component: schemas.ComponentCreate, db: S
     return db_component
 
 @router.get("/{component_id}", response_model=schemas.ComponentResponse)
-def read_component(component_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def read_component(component_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -95,7 +96,7 @@ def read_component(component_id: int, db: Session = Depends(get_db), current_use
     return db_component
 
 @router.put("/{component_id}", response_model=schemas.ComponentResponse)
-def update_component(component_id: int, component: schemas.ComponentUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def update_component(component_id: uuid.UUID, component: schemas.ComponentUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -111,7 +112,7 @@ def update_component(component_id: int, component: schemas.ComponentUpdate, db: 
     return db_component
 
 @router.delete("/{component_id}")
-def delete_component(component_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def delete_component(component_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     db_component = db.query(models.Component).filter(models.Component.id == component_id, models.Component.is_deleted == False).first()
     if db_component is None:
         raise HTTPException(status_code=404, detail="Component not found")

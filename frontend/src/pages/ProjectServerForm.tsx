@@ -11,7 +11,7 @@ export function ProjectServerForm() {
     const queryClient = useQueryClient();
     const toast = useToast();
 
-    const [selectedServerId, setSelectedServerId] = useState<number | ''>('');
+    const [selectedServerId, setSelectedServerId] = useState<string>('');
     const [overrideCredentials, setOverrideCredentials] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -31,7 +31,7 @@ export function ProjectServerForm() {
     const attachMutation = useMutation({
         mutationFn: async () => {
             const payload = {
-                server_id: Number(selectedServerId),
+                server_id: selectedServerId,
                 ...(overrideCredentials ? formData : {})
             };
             await api.post(`/projects/${projectId}/servers`, payload);
@@ -83,7 +83,7 @@ export function ProjectServerForm() {
                     <select
                         required
                         value={selectedServerId}
-                        onChange={(e) => setSelectedServerId(Number(e.target.value))}
+                        onChange={(e) => setSelectedServerId(e.target.value)}
                         className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
                     >
                         <option value="" disabled>Select a global server...</option>

@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function DatabaseEngines() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const queryClient = useQueryClient();
     const toast = useToast();
     const canEdit = (engine: any) => engine.can_edit === true;
@@ -23,7 +23,7 @@ export function DatabaseEngines() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: number) => {
+        mutationFn: async (id: string) => {
             await api.delete(`/databases/${id}`);
         },
         onSuccess: () => {

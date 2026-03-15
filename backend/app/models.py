@@ -1,6 +1,7 @@
+import uuid
 from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, Boolean, Table, DateTime
 from datetime import datetime, timezone
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import JSON, TypeDecorator
 from sqlalchemy.orm import relationship
@@ -87,13 +88,13 @@ class AccessLevelEnum(str, enum.Enum):
 user_group_link = Table(
     'user_group_link',
     Base.metadata,
-    Column('user_id', Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
-    Column('group_id', Integer, ForeignKey('groups.id', ondelete="CASCADE"), primary_key=True)
+    Column('user_id', PgUUID(as_uuid=True), ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
+    Column('group_id', PgUUID(as_uuid=True), ForeignKey('groups.id', ondelete="CASCADE"), primary_key=True)
 )
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
@@ -105,7 +106,7 @@ class User(Base):
 
 class Group(Base):
     __tablename__ = "groups"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String)
     
@@ -114,9 +115,9 @@ class Group(Base):
 
 class ProjectGroupAccess(Base):
     __tablename__ = "project_group_access"
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(PgUUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
 
     project = relationship("Project", back_populates="group_accesses")
@@ -124,9 +125,9 @@ class ProjectGroupAccess(Base):
 
 class ProjectUserAccess(Base):
     __tablename__ = "project_user_access"
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
 
     project = relationship("Project", back_populates="user_accesses")
@@ -137,7 +138,7 @@ class ProjectUserAccess(Base):
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, index=True, nullable=False)
     description = Column(String)
     primary_domain = Column(String)
@@ -153,7 +154,7 @@ class Project(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Creator tracking
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     servers = relationship("Server", secondary="project_server", back_populates="projects")
     databases = relationship("DatabaseEngine", secondary="project_database", back_populates="projects")
@@ -166,8 +167,8 @@ class Project(Base):
 
 class ProjectServer(Base):
     __tablename__ = "project_server"
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
-    server_id = Column(Integer, ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    server_id = Column(PgUUID(as_uuid=True), ForeignKey("servers.id", ondelete="CASCADE"), primary_key=True)
     
     # Optional Specific Credentials for this project 
     username = Column(String, nullable=True)
@@ -180,16 +181,16 @@ class ProjectServer(Base):
 class Server(Base):
     __tablename__ = "servers"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, index=True, nullable=False)
     ip_address = Column(String, nullable=False)
     os = Column(String)
     region = Column(String)
-    
+
     # Uptime Monitoring
     is_online = Column(Boolean, nullable=True)
     last_checked_at = Column(DateTime, nullable=True)
-    
+
     # Default Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
@@ -200,7 +201,7 @@ class Server(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Ownership
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     creator = relationship("User", foreign_keys=[created_by])
 
     projects = relationship("Project", secondary="project_server", back_populates="servers")
@@ -208,8 +209,8 @@ class Server(Base):
 
 class ProjectDatabase(Base):
     __tablename__ = "project_database"
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
-    database_engine_id = Column(Integer, ForeignKey("database_engines.id", ondelete="CASCADE"), primary_key=True)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    database_engine_id = Column(PgUUID(as_uuid=True), ForeignKey("database_engines.id", ondelete="CASCADE"), primary_key=True)
     
     # Specifics for this project
     db_name = Column(String, nullable=False)
@@ -223,13 +224,13 @@ class ProjectDatabase(Base):
 class DatabaseEngine(Base):
     __tablename__ = "database_engines"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, index=True, nullable=False)
     engine = Column(String, nullable=False) # Postgres, MySQL, etc.
     host = Column(String, nullable=False)
     port = Column(Integer)
     connection_string_format = Column(String) # e.g. postgresql://{user}:{pass}@{host}:{port}/{db}
-    
+
     # Default Credentials
     username = Column(String, nullable=True)
     password = Column(EncryptedString, nullable=True)
@@ -239,7 +240,7 @@ class DatabaseEngine(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Ownership
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     creator = relationship("User", foreign_keys=[created_by])
 
     projects = relationship("Project", secondary="project_database", back_populates="databases")
@@ -255,11 +256,11 @@ class Setting(Base):
 class Component(Base):
     __tablename__ = "components"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String, nullable=False) # e.g. "Main Assets Bucket"
     type = Column(String, nullable=False) # e.g. "S3 Bucket", "Redis Cache", "DNS Record"
     custom_fields = Column(EncryptedJSON, default=dict) # Handles arbitrary key-value pairs natively, fully encrypted
-    project_id = Column(Integer, ForeignKey("projects.id"), index=True)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id"), index=True)
 
     # Soft Delete
     is_deleted = Column(Boolean, default=False, index=True)
@@ -270,8 +271,8 @@ class Component(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     action = Column(String, nullable=False, index=True) # e.g. 'CREATED', 'DELETED', 'REVEALED'
     resource_type = Column(String, nullable=False, index=True) # e.g. 'Project', 'Server'
     resource_name = Column(String, nullable=True) # e.g. "My Project" or "10.0.0.1"
@@ -281,6 +282,6 @@ class AuditLog(Base):
 
 class TokenBlocklist(Base):
     __tablename__ = "token_blocklist"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     token = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

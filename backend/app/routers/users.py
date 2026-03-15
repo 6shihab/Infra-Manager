@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -43,7 +44,7 @@ def change_own_password(payload: schemas.PasswordChange, db: Session = Depends(g
     return {"status": "password updated"}
 
 @router.put("/{user_id}/password")
-def admin_change_password(user_id: int, payload: schemas.AdminPasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def admin_change_password(user_id: uuid.UUID, payload: schemas.AdminPasswordChange, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     target_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -53,7 +54,7 @@ def admin_change_password(user_id: int, payload: schemas.AdminPasswordChange, db
     return {"status": "password updated"}
 
 @router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")

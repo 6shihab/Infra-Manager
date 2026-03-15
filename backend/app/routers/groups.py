@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -20,7 +21,7 @@ def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db), curr
     return db_group
 
 @router.delete("/{group_id}")
-def delete_group(group_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def delete_group(group_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
     if not db_group:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -29,7 +30,7 @@ def delete_group(group_id: int, db: Session = Depends(get_db), current_user: mod
     return {"status": "deleted"}
 
 @router.post("/{group_id}/users/{user_id}")
-def add_user_to_group(group_id: int, user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def add_user_to_group(group_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     group = db.query(models.Group).filter(models.Group.id == group_id).first()
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not group or not user:

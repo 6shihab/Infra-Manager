@@ -68,6 +68,7 @@ npm run dev            # http://localhost:5173
 - **Databases** — Track database connections with encrypted passwords
 - **Components** — Flexible entries for any infrastructure piece with arbitrary encrypted key-value config fields
 - **Uptime Monitoring** — Background scheduler periodically checks servers (TCP) and projects (HTTP) and updates online status
+- **UUID Primary Keys** — All entities use UUID v4 primary keys for globally unique, non-sequential identifiers
 - **Access Control** — Users belong to Groups; Groups are granted access to Projects; three roles: Viewer, Editor, Admin; Superuser flag for full access
 - **Audit Logs** — Every create/update/delete is logged with user, action, resource type, and timestamp; visible to superusers only
 - **Settings** — Key-value application configuration store

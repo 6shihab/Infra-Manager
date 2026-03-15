@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -29,7 +30,7 @@ def _can_access_server(user: models.User, server: models.Server, db: Session) ->
     ).first() is not None
 
 
-def _get_linked_project_ids(server_id: int, db: Session):
+def _get_linked_project_ids(server_id: uuid.UUID, db: Session):
     return [
         r.project_id for r in db.query(models.ProjectServer).filter(
             models.ProjectServer.server_id == server_id
@@ -161,7 +162,7 @@ def create_server(
 
 @router.get("/{server_id}", response_model=schemas.ServerResponse)
 def read_server(
-    server_id: int,
+    server_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -177,7 +178,7 @@ def read_server(
 
 @router.put("/{server_id}", response_model=schemas.ServerResponse)
 def update_server(
-    server_id: int,
+    server_id: uuid.UUID,
     server: schemas.ServerUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -202,7 +203,7 @@ def update_server(
 
 @router.delete("/{server_id}")
 def delete_server(
-    server_id: int,
+    server_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):

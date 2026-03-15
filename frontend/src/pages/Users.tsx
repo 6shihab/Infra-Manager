@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface User {
-    id: number;
+    id: string;
     email: string;
     full_name: string;
     is_active: boolean;
@@ -17,7 +17,7 @@ export function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
     // Form state
     const [isAdding, setIsAdding] = useState(false);
@@ -65,7 +65,7 @@ export function Users() {
         }
     };
 
-    const handleDeleteUser = async (id: number) => {
+    const handleDeleteUser = async (id: string) => {
         try {
             await api.delete(`/users/${id}`);
             setUsers(users.filter(u => u.id !== id));

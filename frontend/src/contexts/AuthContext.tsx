@@ -5,7 +5,7 @@ import { queryClient } from '../main';
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 interface User {
-    id: number;
+    id: string;
     email: string;
     full_name: string;
     is_superuser: boolean;

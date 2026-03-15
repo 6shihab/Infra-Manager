@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, field_validator
 import re
 import ipaddress
@@ -35,7 +36,7 @@ class UserCreate(UserBase):
         return v
 
 class UserResponse(UserBase):
-    id: int
+    id: uuid.UUID
     class Config:
         from_attributes = True
 
@@ -80,7 +81,7 @@ class GroupCreate(GroupBase):
     pass
 
 class GroupResponse(GroupBase):
-    id: int
+    id: uuid.UUID
     users: List['UserResponse'] = []
     class Config:
         from_attributes = True
@@ -91,28 +92,28 @@ class AccessLevelEnum(str, Enum):
     ADMIN = "Admin"
 
 class ProjectGroupAccessBase(BaseModel):
-    project_id: int
-    group_id: int
+    project_id: uuid.UUID
+    group_id: uuid.UUID
     access_level: AccessLevelEnum = AccessLevelEnum.VIEWER
 
 class ProjectGroupAccessCreate(ProjectGroupAccessBase):
     pass
 
 class ProjectGroupAccessResponse(ProjectGroupAccessBase):
-    id: int
+    id: uuid.UUID
     class Config:
         from_attributes = True
 
 class ProjectUserAccessBase(BaseModel):
-    project_id: int
-    user_id: int
+    project_id: uuid.UUID
+    user_id: uuid.UUID
     access_level: AccessLevelEnum = AccessLevelEnum.VIEWER
 
 class ProjectUserAccessCreate(ProjectUserAccessBase):
     pass
 
 class ProjectUserAccessResponse(ProjectUserAccessBase):
-    id: int
+    id: uuid.UUID
     class Config:
         from_attributes = True
 
@@ -177,7 +178,7 @@ class ServerUpdate(BaseModel):
         raise ValueError(f"Invalid IP address or hostname: {v}")
 
 class ServerResponse(ServerBase):
-    id: int
+    id: uuid.UUID
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
     can_edit: bool = False
@@ -186,7 +187,7 @@ class ServerResponse(ServerBase):
         from_attributes = True
 
 class ServerListResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     ip_address: str
     os: Optional[str] = None
@@ -194,21 +195,21 @@ class ServerListResponse(BaseModel):
     username: Optional[str] = None
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
-    created_by: Optional[int] = None
+    created_by: Optional[uuid.UUID] = None
     can_edit: bool = False
     can_delete: bool = False
     class Config:
         from_attributes = True
 
 class ProjectServerCreate(BaseModel):
-    server_id: int
+    server_id: uuid.UUID
     username: Optional[str] = None
     password: Optional[str] = None
     ssh_key: Optional[str] = None
 
 class ProjectServerResponse(BaseModel):
-    project_id: int
-    server_id: int
+    project_id: uuid.UUID
+    server_id: uuid.UUID
     username: Optional[str] = None
     server: ServerResponse
     
@@ -238,35 +239,35 @@ class DatabaseEngineUpdate(BaseModel):
     password: Optional[str] = None
 
 class DatabaseEngineResponse(DatabaseEngineBase):
-    id: int
+    id: uuid.UUID
     can_edit: bool = False
     can_delete: bool = False
     class Config:
         from_attributes = True
 
 class DatabaseEngineListResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     engine: str
     host: str
     port: Optional[int] = None
     connection_string_format: Optional[str] = None
     username: Optional[str] = None
-    created_by: Optional[int] = None
+    created_by: Optional[uuid.UUID] = None
     can_edit: bool = False
     can_delete: bool = False
     class Config:
         from_attributes = True
 
 class ProjectDatabaseCreate(BaseModel):
-    database_engine_id: int
+    database_engine_id: uuid.UUID
     db_name: str
     username: Optional[str] = None
     password: Optional[str] = None
 
 class ProjectDatabaseResponse(BaseModel):
-    project_id: int
-    database_engine_id: int
+    project_id: uuid.UUID
+    database_engine_id: uuid.UUID
     db_name: str
     username: Optional[str] = None
     database_engine: DatabaseEngineResponse
@@ -275,14 +276,14 @@ class ProjectDatabaseResponse(BaseModel):
         from_attributes = True
 
 class ProjectListResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     description: Optional[str] = None
     primary_domain: Optional[str] = None
     environment: EnvironmentEnum
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
-    created_by: Optional[int] = None
+    created_by: Optional[uuid.UUID] = None
     server_count: int = 0
     database_count: int = 0
     class Config:
@@ -307,10 +308,10 @@ class ProjectUpdate(BaseModel):
     deployment_note: Optional[str] = None
 
 class ProjectResponse(ProjectBase):
-    id: int
+    id: uuid.UUID
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
-    created_by: Optional[int] = None
+    created_by: Optional[uuid.UUID] = None
     server_links: List[ProjectServerResponse] = []
     database_links: List[ProjectDatabaseResponse] = []
     components: List['ComponentResponse'] = []
@@ -327,7 +328,7 @@ class ComponentBase(BaseModel):
     custom_fields: Dict[str, Any] = {}
 
 class ComponentCreate(ComponentBase):
-    project_id: int
+    project_id: uuid.UUID
 
 class ComponentUpdate(BaseModel):
     name: Optional[str] = None
@@ -335,8 +336,8 @@ class ComponentUpdate(BaseModel):
     custom_fields: Optional[Dict[str, Any]] = None
 
 class ComponentResponse(ComponentBase):
-    id: int
-    project_id: int
+    id: uuid.UUID
+    project_id: uuid.UUID
     class Config:
         from_attributes = True
 
@@ -359,7 +360,7 @@ class SettingResponse(SettingBase):
 
 # --- Audit Schemas ---
 class AuditLogBase(BaseModel):
-    user_id: Optional[int] = None
+    user_id: Optional[uuid.UUID] = None
     action: str
     resource_type: str
     resource_name: Optional[str] = None
@@ -368,7 +369,7 @@ class AuditLogCreate(AuditLogBase):
     pass
 
 class AuditLogResponse(AuditLogBase):
-    id: int
+    id: uuid.UUID
     timestamp: datetime
     user: Optional[UserResponse] = None
     class Config:

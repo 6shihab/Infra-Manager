@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -47,7 +48,7 @@ def _authenticate_token(token: str, db: Session) -> models.User:
     return user
 
 
-async def _event_stream(user_id: int):
+async def _event_stream(user_id: uuid.UUID):
     queue = bus.subscribe(user_id)
     try:
         yield "event: connected\ndata: {}\n\n"

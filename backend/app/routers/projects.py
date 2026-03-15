@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from datetime import datetime
 from fastapi_cache.decorator import cache
@@ -18,7 +19,7 @@ from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 
 
-def _get_user_project_role(db: Session, user: models.User, project_id: int) -> str:
+def _get_user_project_role(db: Session, user: models.User, project_id: uuid.UUID) -> str:
     """Return the effective role for a user on a project: Admin, Editor, or Viewer."""
     if user.is_superuser:
         return "Admin"
@@ -46,7 +47,7 @@ def _get_user_project_role(db: Session, user: models.User, project_id: int) -> s
     return "Viewer"
 
 
-def _project_member_ids(db: Session, project_id: int) -> list[int]:
+def _project_member_ids(db: Session, project_id: uuid.UUID) -> list[int]:
     """Return all user IDs that have access to a project (via group access or creator)."""
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     creator_id = project.created_by if project and project.created_by else None
@@ -146,7 +147,7 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     ]
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
-def read_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Viewer", "Editor", "Admin"]))):
+def read_project(project_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Viewer", "Editor", "Admin"]))):
     db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -167,7 +168,7 @@ def read_project(project_id: int, db: Session = Depends(get_db), current_user: m
     return db_project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
-def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+def update_project(project_id: uuid.UUID, project: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
     db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -183,7 +184,7 @@ def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session 
     return db_project
 
 @router.delete("/{project_id}")
-def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Admin"]))):
+def delete_project(project_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Admin"]))):
     db_project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if db_project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -198,7 +199,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
     return {"status": "deleted"}
 
 @router.post("/{project_id}/groups/{group_id}", response_model=schemas.ProjectGroupAccessResponse)
-def add_group_to_project(project_id: int, group_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def add_group_to_project(project_id: uuid.UUID, group_id: uuid.UUID, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     # Check if project exists
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -234,7 +235,7 @@ def add_group_to_project(project_id: int, group_id: int, access_level: schemas.A
     return new_access
 
 @router.delete("/{project_id}/groups/{group_id}")
-def remove_group_from_project(project_id: int, group_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def remove_group_from_project(project_id: uuid.UUID, group_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     access = db.query(models.ProjectGroupAccess).filter(
         models.ProjectGroupAccess.project_id == project_id,
         models.ProjectGroupAccess.group_id == group_id
@@ -255,7 +256,7 @@ def remove_group_from_project(project_id: int, group_id: int, db: Session = Depe
     return {"status": "success"}
 
 @router.post("/{project_id}/servers", response_model=schemas.ProjectServerResponse)
-def add_server_to_project(project_id: int, link: schemas.ProjectServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+def add_server_to_project(project_id: uuid.UUID, link: schemas.ProjectServerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -281,7 +282,7 @@ def add_server_to_project(project_id: int, link: schemas.ProjectServerCreate, db
     return project_server
 
 @router.delete("/{project_id}/servers/{server_id}")
-def remove_server_from_project(project_id: int, server_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+def remove_server_from_project(project_id: uuid.UUID, server_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
     link = db.query(models.ProjectServer).filter(
         models.ProjectServer.project_id == project_id,
         models.ProjectServer.server_id == server_id
@@ -299,7 +300,7 @@ def remove_server_from_project(project_id: int, server_id: int, db: Session = De
     return {"status": "success"}
 
 @router.post("/{project_id}/databases", response_model=schemas.ProjectDatabaseResponse)
-def add_database_to_project(project_id: int, link: schemas.ProjectDatabaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+def add_database_to_project(project_id: uuid.UUID, link: schemas.ProjectDatabaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -325,7 +326,7 @@ def add_database_to_project(project_id: int, link: schemas.ProjectDatabaseCreate
     return project_db
 
 @router.delete("/{project_id}/databases/{database_engine_id}")
-def remove_database_from_project(project_id: int, database_engine_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
+def remove_database_from_project(project_id: uuid.UUID, database_engine_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user), _: bool = Depends(require_project_role(["Editor", "Admin"]))):
     link = db.query(models.ProjectDatabase).filter(
         models.ProjectDatabase.project_id == project_id,
         models.ProjectDatabase.database_engine_id == database_engine_id
@@ -343,7 +344,7 @@ def remove_database_from_project(project_id: int, database_engine_id: int, db: S
     return {"status": "success"}
 
 @router.post("/{project_id}/users/{user_id}", response_model=schemas.ProjectUserAccessResponse)
-def add_user_to_project(project_id: int, user_id: int, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def add_user_to_project(project_id: uuid.UUID, user_id: uuid.UUID, access_level: schemas.AccessLevelEnum = schemas.AccessLevelEnum.VIEWER, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -374,7 +375,7 @@ def add_user_to_project(project_id: int, user_id: int, access_level: schemas.Acc
     return new_access
 
 @router.delete("/{project_id}/users/{user_id}")
-def remove_user_from_project(project_id: int, user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+def remove_user_from_project(project_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
     access = db.query(models.ProjectUserAccess).filter(
         models.ProjectUserAccess.project_id == project_id,
         models.ProjectUserAccess.user_id == user_id

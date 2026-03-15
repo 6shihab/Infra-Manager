@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function Servers() {
     const [searchQuery, setSearchQuery] = useState('');
-    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const queryClient = useQueryClient();
     const toast = useToast();
     const canEdit = (server: any) => server.can_edit === true;
@@ -24,7 +24,7 @@ export function Servers() {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: number) => {
+        mutationFn: async (id: string) => {
             await api.delete(`/servers/${id}`);
         },
         onSuccess: () => {

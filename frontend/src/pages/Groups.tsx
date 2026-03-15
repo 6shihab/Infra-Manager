@@ -5,14 +5,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface Group {
-    id: number;
+    id: string;
     name: string;
     description: string;
-    users?: { id: number, email: string, full_name: string }[];
+    users?: { id: string, email: string, full_name: string }[];
 }
 
 interface User {
-    id: number;
+    id: string;
     email: string;
     full_name: string;
 }
@@ -30,10 +30,10 @@ export function Groups() {
     const [description, setDescription] = useState('');
 
     // Assign User State
-    const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+    const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [selectedUserToAdd, setSelectedUserToAdd] = useState<string>('');
 
-    const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
     useEffect(() => {
         if (currentUser?.is_superuser) {
@@ -83,7 +83,7 @@ export function Groups() {
         }
     };
 
-    const handleDeleteGroup = async (id: number) => {
+    const handleDeleteGroup = async (id: string) => {
         try {
             await api.delete(`/groups/${id}`);
             setGroups(groups.filter(g => g.id !== id));
@@ -95,7 +95,7 @@ export function Groups() {
         }
     };
 
-    const handleAssignUser = async (groupId: number) => {
+    const handleAssignUser = async (groupId: string) => {
         if (!selectedUserToAdd) return;
 
         try {

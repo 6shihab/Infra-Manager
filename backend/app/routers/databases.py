@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -29,7 +30,7 @@ def _can_access_database(user: models.User, db_engine: models.DatabaseEngine, db
     ).first() is not None
 
 
-def _get_linked_project_ids_db(engine_id: int, db: Session):
+def _get_linked_project_ids_db(engine_id: uuid.UUID, db: Session):
     return [
         r.project_id for r in db.query(models.ProjectDatabase).filter(
             models.ProjectDatabase.database_engine_id == engine_id
@@ -161,7 +162,7 @@ def create_database(
 
 @router.get("/{database_id}", response_model=schemas.DatabaseEngineResponse)
 def read_database(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -177,7 +178,7 @@ def read_database(
 
 @router.put("/{database_id}", response_model=schemas.DatabaseEngineResponse)
 def update_database(
-    database_id: int,
+    database_id: uuid.UUID,
     database: schemas.DatabaseEngineUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
@@ -202,7 +203,7 @@ def update_database(
 
 @router.delete("/{database_id}")
 def delete_database(
-    database_id: int,
+    database_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
