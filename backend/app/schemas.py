@@ -9,6 +9,7 @@ from enum import Enum
 class Token(BaseModel):
     access_token: str
     token_type: str
+    requires_totp: bool = False
 
 class TokenData(BaseModel):
     email: Optional[str] = None
@@ -37,6 +38,7 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: uuid.UUID
+    totp_enabled: bool = False
     class Config:
         from_attributes = True
 
@@ -357,6 +359,26 @@ class SettingUpdate(BaseModel):
 class SettingResponse(SettingBase):
     class Config:
         from_attributes = True
+
+# --- TOTP / 2FA Schemas ---
+class TOTPSetupResponse(BaseModel):
+    secret: str
+    qr_code: str
+    provisioning_uri: str
+
+class TOTPVerifyRequest(BaseModel):
+    code: str
+
+class TOTPActivateResponse(BaseModel):
+    backup_codes: List[str]
+
+class TOTPDisableRequest(BaseModel):
+    password: str
+    code: str
+
+class TOTPLoginRequest(BaseModel):
+    totp_token: str
+    code: str
 
 # --- Audit Schemas ---
 class AuditLogBase(BaseModel):

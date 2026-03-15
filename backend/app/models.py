@@ -100,7 +100,10 @@ class User(Base):
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
-    
+    totp_secret = Column(EncryptedString, nullable=True)
+    totp_enabled = Column(Boolean, default=False)
+    totp_backup_codes = Column(JSON, nullable=True)
+
     groups = relationship("Group", secondary=user_group_link, back_populates="users")
     created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.created_by")
 

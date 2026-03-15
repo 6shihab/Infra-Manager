@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Select } from '../components/Select';
+import { TOTPSetupModal } from '../components/TOTPSetupModal';
+import { TOTPDisableModal } from '../components/TOTPDisableModal';
+import { BackupCodesModal } from '../components/BackupCodesModal';
 
 interface Setting {
     key: string;
@@ -15,6 +18,7 @@ interface UserOption {
     id: string;
     full_name: string | null;
     email: string;
+    totp_enabled?: boolean;
 }
 
 export function Settings() {
@@ -35,6 +39,17 @@ export function Settings() {
     const [adminPw, setAdminPw] = useState({ next: '', confirm: '' });
     const [adminPwSaving, setAdminPwSaving] = useState(false);
     const [adminPwMsg, setAdminPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // TOTP state
+    const [totpSetupOpen, setTotpSetupOpen] = useState(false);
+    const [totpDisableOpen, setTotpDisableOpen] = useState(false);
+    const [backupCodesOpen, setBackupCodesOpen] = useState(false);
+    const [totpEnabled, setTotpEnabled] = useState(user?.totp_enabled ?? false);
+    const [adminDisabling2fa, setAdminDisabling2fa] = useState(false);
+
+    useEffect(() => {
+        setTotpEnabled(user?.totp_enabled ?? false);
+    }, [user?.totp_enabled]);
 
     useEffect(() => {
         fetchSettings();
@@ -143,6 +158,37 @@ export function Settings() {
         }
     };
 
+    const handleTotpEnabled = () => {
+        setTotpEnabled(true);
+        setTotpSetupOpen(false);
+        // Refresh user data so AuthContext picks up totp_enabled
+        window.location.reload();
+    };
+
+    const handleTotpDisabled = () => {
+        setTotpEnabled(false);
+        setTotpDisableOpen(false);
+        window.location.reload();
+    };
+
+    const handleAdminDisable2fa = async () => {
+        if (!adminPwUserId) return;
+        setAdminDisabling2fa(true);
+        try {
+            await api.delete(`/auth/totp/admin/${adminPwUserId}`);
+            setAdminPwMsg({ text: 'Two-factor authentication disabled for user.', type: 'success' });
+            fetchAllUsers();
+        } catch (err: any) {
+            const detail = err?.response?.data?.detail;
+            setAdminPwMsg({ text: typeof detail === 'string' ? detail : 'Failed to disable 2FA.', type: 'error' });
+        } finally {
+            setAdminDisabling2fa(false);
+            setTimeout(() => setAdminPwMsg(null), 4000);
+        }
+    };
+
+    const selectedUser = allUsers.find(u => u.id === adminPwUserId);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
@@ -230,6 +276,61 @@ export function Settings() {
                 </div>
             </div>
 
+            {/* Two-Factor Authentication Section */}
+            <div className="glass-panel p-6 rounded-xl space-y-4">
+                <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
+                    <Shield className="h-6 w-6 text-brand-500" />
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Two-Factor Authentication</h2>
+                        <p className="text-sm text-gray-400">Add an extra layer of security to your account.</p>
+                    </div>
+                </div>
+
+                {totpEnabled ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                                Enabled
+                            </span>
+                            <p className="text-sm text-gray-400">Your account is protected with two-factor authentication.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                onClick={() => setBackupCodesOpen(true)}
+                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                            >
+                                <KeySquare className="mr-2 h-4 w-4" />
+                                Regenerate Backup Codes
+                            </button>
+                            <button
+                                onClick={() => setTotpDisableOpen(true)}
+                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors"
+                            >
+                                <ShieldOff className="mr-2 h-4 w-4" />
+                                Disable 2FA
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-400">
+                            Protect your account by requiring a code from an authenticator app when signing in.
+                        </p>
+                        <button
+                            onClick={() => setTotpSetupOpen(true)}
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Shield className="mr-2 h-4 w-4" />
+                            Enable Two-Factor Authentication
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <TOTPSetupModal open={totpSetupOpen} onClose={() => setTotpSetupOpen(false)} onEnabled={handleTotpEnabled} />
+            <TOTPDisableModal open={totpDisableOpen} onClose={() => setTotpDisableOpen(false)} onDisabled={handleTotpDisabled} />
+            <BackupCodesModal open={backupCodesOpen} onClose={() => setBackupCodesOpen(false)} />
+
             {/* Admin: Change Any User's Password (Superuser Only) */}
             {user?.is_superuser && (
                 <div className="glass-panel p-6 rounded-xl space-y-4">
@@ -269,7 +370,16 @@ export function Settings() {
                             <input type="password" value={adminPw.confirm} onChange={e => setAdminPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-4 flex justify-end gap-3">
+                        {selectedUser?.totp_enabled && (
+                            <button
+                                onClick={handleAdminDisable2fa}
+                                disabled={adminDisabling2fa}
+                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {adminDisabling2fa ? 'Disabling...' : <><ShieldOff className="mr-2 h-4 w-4" />Disable 2FA</>}
+                            </button>
+                        )}
                         <button onClick={handleAdminPwChange} disabled={adminPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                             {adminPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Set Password</>}
                         </button>

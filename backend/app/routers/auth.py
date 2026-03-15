@@ -24,9 +24,17 @@ def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestFor
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if user.totp_enabled:
+        temp_token = auth.create_access_token(
+            data={"sub": user.email, "type": "totp_pending"},
+            expires_delta=timedelta(minutes=5),
+        )
+        return {"access_token": temp_token, "token_type": "bearer", "requires_totp": True}
+
     access_token = auth.create_access_token(data={"sub": user.email})
     log_audit(db, user.id, "LOGIN", "System", user.email)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "requires_totp": False}
 
 @router.get("/me", response_model=schemas.UserResponse)
 def read_users_me(current_user: models.User = Depends(dependencies.get_current_user)):

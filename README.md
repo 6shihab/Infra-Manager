@@ -7,7 +7,7 @@ A full-stack infrastructure asset management application for tracking projects, 
 | Layer | Technology |
 |-------|-----------|
 | Backend | FastAPI, SQLAlchemy, PostgreSQL, Alembic |
-| Auth | JWT (PyJWT), bcrypt, RBAC |
+| Auth | JWT (PyJWT), bcrypt, RBAC, TOTP 2FA (pyotp) |
 | Encryption | Fernet (cryptography library) |
 | Scheduling | APScheduler (uptime monitoring) |
 | Frontend | React 19, TypeScript, Vite, TailwindCSS v4 |
@@ -71,6 +71,7 @@ npm run dev            # http://localhost:5173
 - **UUID Primary Keys** — All entities use UUID v4 primary keys for globally unique, non-sequential identifiers
 - **Access Control** — Users belong to Groups; Groups are granted access to Projects; three roles: Viewer, Editor, Admin; Superuser flag for full access
 - **Audit Logs** — Every create/update/delete is logged with user, action, resource type, and timestamp; visible to superusers only
+- **Two-Factor Authentication** — TOTP-based 2FA with QR code setup, backup recovery codes, and admin override for locked-out users
 - **Settings** — Key-value application configuration store
 
 ## Project Structure
