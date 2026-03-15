@@ -294,6 +294,7 @@ class ProjectBase(BaseModel):
     description: Optional[str] = None
     primary_domain: Optional[str] = None
     environment: EnvironmentEnum = EnvironmentEnum.dev
+    deployment_note: Optional[str] = None
 
 class ProjectCreate(ProjectBase):
     pass
@@ -303,6 +304,7 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = None
     primary_domain: Optional[str] = None
     environment: Optional[EnvironmentEnum] = None
+    deployment_note: Optional[str] = None
 
 class ProjectResponse(ProjectBase):
     id: int

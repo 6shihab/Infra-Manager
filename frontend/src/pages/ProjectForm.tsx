@@ -18,7 +18,8 @@ export function ProjectForm() {
         name: '',
         description: '',
         primary_domain: '',
-        environment: 'Dev'
+        environment: 'Dev',
+        deployment_note: ''
     });
 
     useEffect(() => {
@@ -29,7 +30,8 @@ export function ProjectForm() {
                         name: res.data.name || '',
                         description: res.data.description || '',
                         primary_domain: res.data.primary_domain || '',
-                        environment: res.data.environment || 'Dev'
+                        environment: res.data.environment || 'Dev',
+                        deployment_note: res.data.deployment_note || ''
                     });
                 })
                 .catch(err => console.error("Failed to fetch project for editing", err))
@@ -125,6 +127,17 @@ export function ProjectForm() {
                             placeholder="e.g. api.example.com"
                         />
                     </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Deployment Note</label>
+                    <textarea
+                        rows={5}
+                        value={formData.deployment_note}
+                        onChange={(e) => setFormData({ ...formData, deployment_note: e.target.value })}
+                        className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white placeholder-gray-500"
+                        placeholder="Deployment instructions, rollback steps, or any notes for the team..."
+                    />
                 </div>
 
                 <div className="pt-4 border-t border-dark-border flex justify-end">

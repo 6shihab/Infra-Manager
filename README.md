@@ -63,7 +63,7 @@ npm run dev            # http://localhost:5173
 
 ## Features
 
-- **Projects** — Group servers, databases, and components under a project; track primary domain and uptime status
+- **Projects** — Group servers, databases, and components under a project; track primary domain, uptime status, and deployment notes
 - **Servers** — Store VM/host details with encrypted SSH credentials
 - **Databases** — Track database connections with encrypted passwords
 - **Components** — Flexible entries for any infrastructure piece with arbitrary encrypted key-value config fields

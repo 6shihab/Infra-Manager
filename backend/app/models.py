@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Boolean, Table, DateTime
+from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, Boolean, Table, DateTime
 from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
@@ -142,6 +142,7 @@ class Project(Base):
     description = Column(String)
     primary_domain = Column(String)
     environment = Column(Enum(EnvironmentEnum), default=EnvironmentEnum.dev)
+    deployment_note = Column(Text, nullable=True)
 
     # Uptime Monitoring
     is_online = Column(Boolean, nullable=True)

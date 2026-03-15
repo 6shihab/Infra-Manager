@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Server, Database, KeySquare, Globe, ExternalLink, Activity, Info, Lock, Layers, Trash2, Shield, Plus, X, Copy, Check, FileText, Pencil, Save } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
@@ -109,6 +109,12 @@ export function ProjectDetails() {
     const [selectedGroupId, setSelectedGroupId] = useState('');
     const [selectedAccessLevel, setSelectedAccessLevel] = useState('Viewer');
 
+    // Deployment Note State
+    const [editingNote, setEditingNote] = useState(false);
+    const [noteText, setNoteText] = useState('');
+    const [savingNote, setSavingNote] = useState(false);
+    const [noteCollapsed, setNoteCollapsed] = useState(false);
+
     useEffect(() => {
         if (user?.is_superuser) {
             api.get('/groups/')
@@ -208,6 +214,19 @@ export function ProjectDetails() {
     const handleDeleteDatabase = (dbId: number, dbName: string) => setDeleteConfig({ type: 'database', id: dbId, title: 'Remove Database', name: dbName });
     const handleDeleteComponent = (compId: number, compName: string) => setDeleteConfig({ type: 'component', id: compId, title: 'Delete Component', name: compName });
 
+    const handleSaveNote = async () => {
+        setSavingNote(true);
+        try {
+            await api.put(`/projects/${id}`, { deployment_note: noteText });
+            setProject({ ...project, deployment_note: noteText });
+            setEditingNote(false);
+            toast.success("Deployment note saved.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || "Failed to save deployment note.");
+        } finally {
+            setSavingNote(false);
+        }
+    };
 
     useEffect(() => {
         api.get(`/projects/${id}`)
@@ -314,6 +333,73 @@ export function ProjectDetails() {
                         </Link>
                     )}
                 </div>
+            </div>
+
+            <hr className="border-dark-border my-6" />
+
+            {/* Deployment Note section */}
+            <div>
+                <div className="flex items-center justify-between mb-4">
+                    <button
+                        onClick={() => setNoteCollapsed(!noteCollapsed)}
+                        className="text-lg font-semibold text-white flex items-center hover:text-gray-300 transition-colors"
+                    >
+                        <FileText className="mr-2 h-5 w-5 text-brand-500" />
+                        Deployment Note
+                        <svg
+                            className={`ml-2 h-4 w-4 transition-transform ${noteCollapsed ? '-rotate-90' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    {canEdit && !editingNote && !noteCollapsed && (
+                        <button
+                            onClick={() => { setNoteText(project.deployment_note || ''); setEditingNote(true); }}
+                            className="text-sm text-brand-500 hover:text-brand-400 flex items-center gap-1"
+                        >
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                        </button>
+                    )}
+                </div>
+
+                {!noteCollapsed && (
+                    <div className="glass-panel p-5 rounded-xl">
+                        {editingNote ? (
+                            <div className="space-y-3">
+                                <textarea
+                                    rows={6}
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                    className="w-full px-4 py-3 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white placeholder-gray-500 text-sm font-mono"
+                                    placeholder="Deployment instructions, rollback steps, environment setup notes..."
+                                    autoFocus
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        onClick={() => setEditingNote(false)}
+                                        className="px-4 py-2 text-sm text-gray-400 hover:text-white bg-white/5 border border-dark-border rounded-lg hover:bg-white/10 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveNote}
+                                        disabled={savingNote}
+                                        className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {savingNote ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Note</>}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            project.deployment_note ? (
+                                <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{project.deployment_note}</p>
+                            ) : (
+                                <p className="text-sm text-gray-500 italic">No deployment note has been added yet.</p>
+                            )
+                        )}
+                    </div>
+                )}
             </div>
 
             <hr className="border-dark-border my-6" />
