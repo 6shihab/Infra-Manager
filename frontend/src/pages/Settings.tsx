@@ -8,6 +8,7 @@ import { Select } from '../components/Select';
 import { TOTPSetupModal } from '../components/TOTPSetupModal';
 import { TOTPDisableModal } from '../components/TOTPDisableModal';
 import { BackupCodesModal } from '../components/BackupCodesModal';
+import type { ApiError } from '../types/api';
 
 interface Setting {
     key: string;
@@ -121,8 +122,8 @@ export function Settings() {
             await api.put('/users/me/password', { current_password: selfPw.current, new_password: selfPw.next });
             setSelfPwMsg({ text: 'Password changed successfully.', type: 'success' });
             setSelfPw({ current: '', next: '', confirm: '' });
-        } catch (err: any) {
-            const detail = err?.response?.data?.detail;
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
             let msg = 'Failed to change password.';
             if (typeof detail === 'string') msg = detail;
             else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
@@ -149,8 +150,8 @@ export function Settings() {
             setAdminPwMsg({ text: 'Password changed successfully.', type: 'success' });
             setAdminPw({ next: '', confirm: '' });
             setAdminPwUserId('');
-        } catch (err: any) {
-            const detail = err?.response?.data?.detail;
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
             let msg = 'Failed to change password.';
             if (typeof detail === 'string') msg = detail;
             else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
@@ -180,8 +181,8 @@ export function Settings() {
             await api.delete(`/auth/totp/admin/${adminPwUserId}`);
             setAdminPwMsg({ text: 'Two-factor authentication disabled for user.', type: 'success' });
             fetchAllUsers();
-        } catch (err: any) {
-            const detail = err?.response?.data?.detail;
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
             setAdminPwMsg({ text: typeof detail === 'string' ? detail : 'Failed to disable 2FA.', type: 'error' });
         } finally {
             setAdminDisabling2fa(false);
@@ -361,7 +362,7 @@ export function Settings() {
                             <Select
                                 value={adminPwUserId}
                                 onChange={setAdminPwUserId}
-                                options={allUsers.map((u: any) => ({
+                                options={allUsers.map((u: UserOption) => ({
                                     value: u.id,
                                     label: u.full_name ? `${u.full_name} (${u.email})` : u.email
                                 }))}

@@ -123,8 +123,8 @@ class Group(Base):
 class ProjectGroupAccess(Base):
     __tablename__ = "project_group_access"
     id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    group_id = Column(PgUUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id = Column(PgUUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True)
     access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
 
     project = relationship("Project", back_populates="group_accesses")
@@ -133,8 +133,8 @@ class ProjectGroupAccess(Base):
 class ProjectUserAccess(Base):
     __tablename__ = "project_user_access"
     id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id = Column(PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     access_level = Column(Enum(AccessLevelEnum), default=AccessLevelEnum.VIEWER, nullable=False)
 
     project = relationship("Project", back_populates="user_accesses")
@@ -283,7 +283,7 @@ class AuditLog(Base):
     action = Column(String, nullable=False, index=True) # e.g. 'CREATED', 'DELETED', 'REVEALED'
     resource_type = Column(String, nullable=False, index=True) # e.g. 'Project', 'Server'
     resource_name = Column(String, nullable=True) # e.g. "My Project" or "10.0.0.1"
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     user = relationship("User")
 

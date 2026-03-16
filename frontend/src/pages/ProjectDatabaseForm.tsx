@@ -5,6 +5,7 @@ import { ArrowLeft, Database } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select } from '../components/Select';
+import type { DatabaseEngineListItem, ApiError } from '../types/api';
 
 export function ProjectDatabaseForm() {
     const navigate = useNavigate();
@@ -43,8 +44,9 @@ export function ProjectDatabaseForm() {
             toast.success('Database Engine attached to project successfully');
             navigate(`/projects/${projectId}`);
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.detail || 'Failed to attach database engine');
+        onError: (err: unknown) => {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            toast.error(typeof detail === 'string' ? detail : 'Failed to attach database engine');
         }
     });
 
@@ -89,7 +91,7 @@ export function ProjectDatabaseForm() {
                     <Select
                         value={selectedDbEngineId}
                         onChange={setSelectedDbEngineId}
-                        options={globalEngines?.map((engine: any) => ({
+                        options={globalEngines?.map((engine: DatabaseEngineListItem) => ({
                             value: String(engine.id),
                             label: `${engine.name} (${engine.engine} @ ${engine.host})`
                         })) ?? []}

@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
+from starlette.responses import Response
 from datetime import datetime
 from fastapi_cache.decorator import cache
 from sqlalchemy import or_, func
@@ -85,7 +86,7 @@ def create_project(request: Request, project: schemas.ProjectCreate, db: Session
     return db_project
 
 @router.get("/", response_model=List[schemas.ProjectListResponse])
-def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def read_projects(skip: int = 0, limit: int = 100, response: Response = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.is_superuser:
         base_q = db.query(models.Project).filter(models.Project.is_deleted == False)
     else:
@@ -114,6 +115,9 @@ def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
                 )
             )
 
+    total = base_q.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total)
     projects = base_q.offset(skip).limit(limit).all()
 
     if not projects:

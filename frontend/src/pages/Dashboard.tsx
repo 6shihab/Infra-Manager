@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Server, Database, FolderKanban, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import type { ProjectListItem } from '../types/api';
 
 export function Dashboard() {
     const { data: projects = [], isLoading: loading } = useQuery({
@@ -13,8 +14,8 @@ export function Dashboard() {
     });
 
     const totalProjects = projects.length;
-    const totalServers = projects.reduce((acc: number, proj: any) => acc + (proj.server_count || 0), 0);
-    const totalDatabases = projects.reduce((acc: number, proj: any) => acc + (proj.database_count || 0), 0);
+    const totalServers = projects.reduce((acc: number, proj: ProjectListItem) => acc + (proj.server_count || 0), 0);
+    const totalDatabases = projects.reduce((acc: number, proj: ProjectListItem) => acc + (proj.database_count || 0), 0);
 
     const stats = [
         { name: 'Total Projects', value: totalProjects.toString(), icon: FolderKanban, change: 'Active', trend: 'neutral' },

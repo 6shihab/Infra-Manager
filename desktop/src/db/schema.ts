@@ -1,6 +1,8 @@
 import { Database } from 'sql.js';
 import { migration001 } from './migrations/001_initial';
 import { migration002 } from './migrations/002_sync_log';
+import { migration003 } from './migrations/003_idempotency_key';
+import { migration004 } from './migrations/004_add_indexes';
 
 interface Migration {
     version: number;
@@ -11,6 +13,8 @@ interface Migration {
 const migrations: Migration[] = [
     { version: 1, name: 'initial_schema', up: migration001 },
     { version: 2, name: 'sync_log_table', up: migration002 },
+    { version: 3, name: 'idempotency_key', up: migration003 },
+    { version: 4, name: 'add_indexes', up: migration004 },
 ];
 
 export function runMigrations(db: Database): void {

@@ -9,7 +9,7 @@ import { notifyRenderer } from '../ipc/index';
 const MAX_RETRIES = 5;
 
 /** Make an HTTP request with the given method, endpoint, body, and authorization */
-function httpRequest(baseUrl: string, method: string, endpoint: string, token: string, body?: any): Promise<{ status: number; data: any }> {
+function httpRequest(baseUrl: string, method: string, endpoint: string, token: string, body?: any, extraHeaders?: Record<string, string>): Promise<{ status: number; data: any }> {
     return new Promise((resolve, reject) => {
         const fullUrl = `${baseUrl.replace(/\/+$/, '')}${endpoint}`;
         const parsed = new URL(fullUrl);
@@ -27,6 +27,7 @@ function httpRequest(baseUrl: string, method: string, endpoint: string, token: s
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     ...(bodyStr ? { 'Content-Length': Buffer.byteLength(bodyStr) } : {}),
+                    ...(extraHeaders || {}),
                 },
             },
             (res) => {
@@ -102,7 +103,12 @@ export class QueueDrainer {
                 }
 
                 try {
-                    const response = await httpRequest(this.apiUrl, entry.method, endpoint, this.token, body);
+                    // Attach idempotency key for POST requests to prevent duplicates on retry
+                    const extraHeaders: Record<string, string> = {};
+                    if (entry.idempotency_key && entry.method.toUpperCase() === 'POST') {
+                        extraHeaders['X-Idempotency-Key'] = entry.idempotency_key;
+                    }
+                    const response = await httpRequest(this.apiUrl, entry.method, endpoint, this.token, body, extraHeaders);
 
                     if (response.status === 401) {
                         // Auth failed — stop draining

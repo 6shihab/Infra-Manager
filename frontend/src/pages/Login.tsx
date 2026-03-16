@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { KeySquare, Lock, LogIn, Shield, ArrowLeft, WifiOff } from 'lucide-react';
 import api from '../utils/api';
+import type { ApiError } from '../types/api';
 
 export function Login() {
     const [email, setEmail] = useState('');
@@ -61,13 +62,15 @@ export function Login() {
 
             login(response.data.access_token);
             navigate('/');
-        } catch (err: any) {
-            if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        } catch (err: unknown) {
+            const axiosErr = err as ApiError;
+            if (axiosErr.code === 'ECONNABORTED' || axiosErr.message?.includes('timeout')) {
                 setError('Connection timed out. The server took too long to respond.');
-            } else if (!err.response) {
+            } else if (!axiosErr.response) {
                 setError('Cannot reach the server. Check your connection or server URL.');
             } else {
-                setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+                const detail = axiosErr.response?.data?.detail;
+                setError(typeof detail === 'string' ? detail : 'Login failed. Please check your credentials.');
             }
         } finally {
             setLoading(false);
@@ -87,13 +90,15 @@ export function Login() {
 
             login(response.data.access_token);
             navigate('/');
-        } catch (err: any) {
-            if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        } catch (err: unknown) {
+            const axiosErr = err as ApiError;
+            if (axiosErr.code === 'ECONNABORTED' || axiosErr.message?.includes('timeout')) {
                 setError('Connection timed out. The server took too long to respond.');
-            } else if (!err.response) {
+            } else if (!axiosErr.response) {
                 setError('Cannot reach the server. Check your connection or server URL.');
             } else {
-                setError(err.response?.data?.detail || 'Invalid code. Please try again.');
+                const detail = axiosErr.response?.data?.detail;
+                setError(typeof detail === 'string' ? detail : 'Invalid code. Please try again.');
             }
         } finally {
             setLoading(false);

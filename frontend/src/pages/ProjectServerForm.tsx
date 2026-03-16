@@ -5,6 +5,7 @@ import { ArrowLeft, Server } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select } from '../components/Select';
+import type { ServerListItem, ApiError } from '../types/api';
 
 export function ProjectServerForm() {
     const navigate = useNavigate();
@@ -42,8 +43,9 @@ export function ProjectServerForm() {
             toast.success('Server attached to project successfully');
             navigate(`/projects/${projectId}`);
         },
-        onError: (err: any) => {
-            toast.error(err.response?.data?.detail || 'Failed to attach server');
+        onError: (err: unknown) => {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            toast.error(typeof detail === 'string' ? detail : 'Failed to attach server');
         }
     });
 
@@ -84,7 +86,7 @@ export function ProjectServerForm() {
                     <Select
                         value={selectedServerId}
                         onChange={setSelectedServerId}
-                        options={globalServers?.map((server: any) => ({
+                        options={globalServers?.map((server: ServerListItem) => ({
                             value: String(server.id),
                             label: `${server.name} (${server.ip_address})`
                         })) ?? []}

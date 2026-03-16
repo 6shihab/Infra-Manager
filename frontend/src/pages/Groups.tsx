@@ -6,19 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Select } from '../components/Select';
-
-interface Group {
-    id: string;
-    name: string;
-    description: string;
-    users?: { id: string, email: string, full_name: string }[];
-}
-
-interface User {
-    id: string;
-    email: string;
-    full_name: string;
-}
+import type { Group, User, ApiError } from '../types/api';
 
 export function Groups() {
     const { user: currentUser } = useAuth();
@@ -65,7 +53,7 @@ export function Groups() {
     const fetchAllUsers = async () => {
         try {
             const res = await api.get('/users/');
-            setAllUsers(res.data.map((u: any) => ({ id: u.id, email: u.email, full_name: u.full_name })));
+            setAllUsers(res.data.map((u: User) => ({ id: u.id, email: u.email, full_name: u.full_name })));
         } catch (err) {
             console.error("Failed to fetch users for assignment dropdown", err);
         }
@@ -82,8 +70,8 @@ export function Groups() {
             setName('');
             setDescription('');
             fetchGroups(); // Refresh list to get relationships if backend populates them
-        } catch (err: any) {
-            const msg = err.response?.data?.detail;
+        } catch (err: unknown) {
+            const msg = (err as ApiError)?.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to create group');
         }
     };
@@ -93,8 +81,8 @@ export function Groups() {
             await api.delete(`/groups/${id}`);
             setGroups(groups.filter(g => g.id !== id));
             setConfirmDelete(null);
-        } catch (err: any) {
-            const msg = err.response?.data?.detail;
+        } catch (err: unknown) {
+            const msg = (err as ApiError)?.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to delete group');
             setConfirmDelete(null);
         }
@@ -108,8 +96,8 @@ export function Groups() {
             setSelectedGroup(null);
             setSelectedUserToAdd('');
             fetchGroups(); // Refresh to show new user in the group list
-        } catch (err: any) {
-            const msg = err.response?.data?.detail;
+        } catch (err: unknown) {
+            const msg = (err as ApiError)?.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to assign user to group');
         }
     };
@@ -118,8 +106,9 @@ export function Groups() {
         try {
             await api.delete(`/groups/${groupId}/users/${userId}`);
             fetchGroups();
-        } catch (err: any) {
-            toast.error(err.response?.data?.detail || "Failed to remove user from group");
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            toast.error(typeof detail === 'string' ? detail : "Failed to remove user from group");
         }
     };
 
@@ -248,8 +237,8 @@ export function Groups() {
                                         value={selectedUserToAdd}
                                         onChange={setSelectedUserToAdd}
                                         options={allUsers
-                                            .filter((u: any) => !group.users?.some((gu: any) => gu.id === u.id))
-                                            .map((u: any) => ({ value: u.id, label: u.full_name || u.email }))}
+                                            .filter((u: User) => !group.users?.some((gu: User) => gu.id === u.id))
+                                            .map((u: User) => ({ value: u.id, label: u.full_name || u.email }))}
                                         placeholder="Select User..."
                                         className="flex-1"
                                         size="sm"

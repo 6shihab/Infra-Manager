@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
+from starlette.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models, auth
@@ -14,9 +15,12 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/", response_model=List[schemas.UserResponse])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
-    users = db.query(models.User).offset(skip).limit(limit).all()
-    return users
+def read_users(skip: int = 0, limit: int = 100, response: Response = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+    base_q = db.query(models.User)
+    total = base_q.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total)
+    return base_q.offset(skip).limit(limit).all()
 
 @router.post("/", response_model=schemas.UserResponse)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):

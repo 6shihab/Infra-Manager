@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from starlette.responses import Response
 from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List
@@ -90,11 +91,16 @@ def _can_delete_database(user: models.User, db_engine: models.DatabaseEngine, db
 def read_databases(
     skip: int = 0,
     limit: int = 100,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     if current_user.is_superuser:
-        engines = db.query(models.DatabaseEngine).filter(models.DatabaseEngine.is_deleted == False).offset(skip).limit(limit).all()
+        base_q = db.query(models.DatabaseEngine).filter(models.DatabaseEngine.is_deleted == False)
+        total = base_q.count()
+        if response:
+            response.headers["X-Total-Count"] = str(total)
+        engines = base_q.offset(skip).limit(limit).all()
         for e in engines:
             e.can_edit = True
             e.can_delete = True
@@ -131,16 +137,47 @@ def read_databases(
     ).distinct()
     all_ids = owned.union(via_project)
 
-    engines = (
-        db.query(models.DatabaseEngine)
-        .filter(models.DatabaseEngine.id.in_(all_ids), models.DatabaseEngine.is_deleted == False)
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    base_q = db.query(models.DatabaseEngine).filter(models.DatabaseEngine.id.in_(all_ids), models.DatabaseEngine.is_deleted == False)
+    total = base_q.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total)
+    engines = base_q.offset(skip).limit(limit).all()
+
+    # Batch-compute permissions: pre-load all engine→project links and user's role-project sets
+    engine_ids = [e.id for e in engines]
+    engine_project_map: dict = {}
+    if engine_ids:
+        links = db.query(models.ProjectDatabase.database_engine_id, models.ProjectDatabase.project_id).filter(
+            models.ProjectDatabase.database_engine_id.in_(engine_ids)
+        ).all()
+        for eng_id, proj_id in links:
+            engine_project_map.setdefault(eng_id, set()).add(proj_id)
+
+    # Project IDs where user has Editor+ access (via groups)
+    editor_project_ids: set = set()
+    admin_project_ids: set = set()
+    if user_group_ids:
+        for acc in db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+        ).all():
+            editor_project_ids.add(acc.project_id)
+            if acc.access_level == "Admin":
+                admin_project_ids.add(acc.project_id)
+    # Via direct user access
+    for acc in db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.user_id == current_user.id,
+        models.ProjectUserAccess.access_level.in_(["Editor", "Admin"]),
+    ).all():
+        editor_project_ids.add(acc.project_id)
+        if acc.access_level == "Admin":
+            admin_project_ids.add(acc.project_id)
+
     for e in engines:
-        e.can_edit = _can_edit_database(current_user, e, db)
-        e.can_delete = _can_delete_database(current_user, e, db)
+        is_creator = e.created_by == current_user.id
+        linked_pids = engine_project_map.get(e.id, set())
+        e.can_edit = is_creator or bool(linked_pids & editor_project_ids)
+        e.can_delete = is_creator or bool(linked_pids & admin_project_ids)
     return engines
 
 

@@ -5,14 +5,15 @@ import { Plus, Search, Database as DatabaseIcon, Trash2, Edit } from 'lucide-rea
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import type { DatabaseEngineListItem, ApiError } from '../types/api';
 
 export function DatabaseEngines() {
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const queryClient = useQueryClient();
     const toast = useToast();
-    const canEdit = (engine: any) => engine.can_edit === true;
-    const canDelete = (engine: any) => engine.can_delete === true;
+    const canEdit = (engine: DatabaseEngineListItem) => engine.can_edit === true;
+    const canDelete = (engine: DatabaseEngineListItem) => engine.can_delete === true;
 
     const { data: engines, isLoading } = useQuery({
         queryKey: ['databases'],
@@ -30,15 +31,15 @@ export function DatabaseEngines() {
             queryClient.invalidateQueries({ queryKey: ['databases'] });
             toast.success('Database Engine deleted successfully');
         },
-        onError: (err: any) => {
-            const detail = err?.response?.data?.detail || 'Failed to delete engine';
-            toast.error(detail);
+        onError: (err: unknown) => {
+            const detail = (err as ApiError)?.response?.data?.detail || 'Failed to delete engine';
+            toast.error(typeof detail === 'string' ? detail : 'Failed to delete engine');
         }
     });
 
     const filteredEngines = useMemo(() => {
         if (!engines) return [];
-        return engines.filter((engine: any) => {
+        return engines.filter((engine: DatabaseEngineListItem) => {
             const query = searchQuery.toLowerCase();
             return !query ||
                 engine.name.toLowerCase().includes(query) ||
@@ -118,7 +119,7 @@ export function DatabaseEngines() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredEngines.map((engine: any) => (
+                    {filteredEngines.map((engine: DatabaseEngineListItem) => (
                         <div key={engine.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden border border-dark-border hover:border-brand-500/50 transition-all duration-300">
                             <div className="p-5 flex-1 relative">
                                 {(canEdit(engine) || canDelete(engine)) && (

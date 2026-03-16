@@ -1,5 +1,7 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+from starlette.responses import Response
 from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List
@@ -90,11 +92,16 @@ def _can_delete_server(user: models.User, server: models.Server, db: Session) ->
 def read_servers(
     skip: int = 0,
     limit: int = 100,
+    response: Response = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     if current_user.is_superuser:
-        servers = db.query(models.Server).filter(models.Server.is_deleted == False).offset(skip).limit(limit).all()
+        base_q = db.query(models.Server).filter(models.Server.is_deleted == False)
+        total = base_q.count()
+        if response:
+            response.headers["X-Total-Count"] = str(total)
+        servers = base_q.offset(skip).limit(limit).all()
         for s in servers:
             s.can_edit = True
             s.can_delete = True
@@ -131,16 +138,47 @@ def read_servers(
     ).distinct()
     all_ids = owned.union(via_project)
 
-    servers = (
-        db.query(models.Server)
-        .filter(models.Server.id.in_(all_ids), models.Server.is_deleted == False)
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    base_q = db.query(models.Server).filter(models.Server.id.in_(all_ids), models.Server.is_deleted == False)
+    total = base_q.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total)
+    servers = base_q.offset(skip).limit(limit).all()
+
+    # Batch-compute permissions: pre-load all server→project links and user's role-project sets
+    server_ids = [s.id for s in servers]
+    server_project_map: dict = {}
+    if server_ids:
+        links = db.query(models.ProjectServer.server_id, models.ProjectServer.project_id).filter(
+            models.ProjectServer.server_id.in_(server_ids)
+        ).all()
+        for srv_id, proj_id in links:
+            server_project_map.setdefault(srv_id, set()).add(proj_id)
+
+    # Project IDs where user has Editor+ access (via groups)
+    editor_project_ids: set = set()
+    admin_project_ids: set = set()
+    if user_group_ids:
+        for acc in db.query(models.ProjectGroupAccess).filter(
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.ProjectGroupAccess.access_level.in_(["Editor", "Admin"]),
+        ).all():
+            editor_project_ids.add(acc.project_id)
+            if acc.access_level == "Admin":
+                admin_project_ids.add(acc.project_id)
+    # Via direct user access
+    for acc in db.query(models.ProjectUserAccess).filter(
+        models.ProjectUserAccess.user_id == current_user.id,
+        models.ProjectUserAccess.access_level.in_(["Editor", "Admin"]),
+    ).all():
+        editor_project_ids.add(acc.project_id)
+        if acc.access_level == "Admin":
+            admin_project_ids.add(acc.project_id)
+
     for s in servers:
-        s.can_edit = _can_edit_server(current_user, s, db)
-        s.can_delete = _can_delete_server(current_user, s, db)
+        is_creator = s.created_by == current_user.id
+        linked_pids = server_project_map.get(s.id, set())
+        s.can_edit = is_creator or bool(linked_pids & editor_project_ids)
+        s.can_delete = is_creator or bool(linked_pids & admin_project_ids)
     return servers
 
 

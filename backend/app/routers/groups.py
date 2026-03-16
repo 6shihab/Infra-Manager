@@ -1,5 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 from app import schemas, models
@@ -9,8 +10,12 @@ from app.dependencies import get_current_active_superuser
 router = APIRouter(prefix="/groups", tags=["groups"])
 
 @router.get("/", response_model=List[schemas.GroupResponse])
-def read_groups(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
-    return db.query(models.Group).offset(skip).limit(limit).all()
+def read_groups(skip: int = 0, limit: int = 100, response: Response = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):
+    base_q = db.query(models.Group)
+    total = base_q.count()
+    if response:
+        response.headers["X-Total-Count"] = str(total)
+    return base_q.offset(skip).limit(limit).all()
 
 @router.post("/", response_model=schemas.GroupResponse)
 def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):

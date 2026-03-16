@@ -29,7 +29,7 @@ export function installOfflineAdapter(): void {
         const endpoint = rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.replace(baseURL, '');
         const method = (config.method || 'GET').toUpperCase();
 
-        let body: any = undefined;
+        let body: unknown = undefined;
         if (config.data) {
             if (typeof config.data === 'string') {
                 try { body = JSON.parse(config.data); } catch { body = config.data; }

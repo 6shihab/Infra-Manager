@@ -1,6 +1,7 @@
 import { Database } from 'sql.js';
 import { saveDb } from '../index';
 import * as crypto from 'crypto';
+import { encrypt, decrypt } from '../../crypto';
 
 function generateUUID(): string {
     return crypto.randomUUID();
@@ -33,7 +34,11 @@ export function getServerCredentials(db: Database, id: string): any | null {
     const result = db.exec('SELECT username, password, ssh_key FROM servers WHERE id = ?', [id]);
     if (result.length === 0 || result[0].values.length === 0) return null;
     const row = result[0].values[0];
-    return { username: row[0], password: row[1], ssh_key: row[2] };
+    return {
+        username: row[0] as string | null,
+        password: decrypt(row[1] as string | null),
+        ssh_key: decrypt(row[2] as string | null),
+    };
 }
 
 export function createServer(db: Database, data: any): any {
@@ -42,7 +47,7 @@ export function createServer(db: Database, data: any): any {
     db.run(
         `INSERT INTO servers (id, name, ip_address, os, region, username, password, ssh_key, is_deleted, created_by, can_edit, can_delete, _is_local, _local_updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, 1, 1, ?)`,
-        [id, data.name, data.ip_address, data.os || null, data.region || null, data.username || null, data.password || null, data.ssh_key || null, data.created_by || null, now]
+        [id, data.name, data.ip_address, data.os || null, data.region || null, data.username || null, encrypt(data.password), encrypt(data.ssh_key), data.created_by || null, now]
     );
     saveDb();
     return { id, ...data, is_deleted: false, _is_local: true };
@@ -52,11 +57,12 @@ export function updateServer(db: Database, id: string, data: any): any {
     const fields: string[] = [];
     const values: any[] = [];
 
+    const SENSITIVE_FIELDS = new Set(['password', 'ssh_key']);
     const allowedFields = ['name', 'ip_address', 'os', 'region', 'username', 'password', 'ssh_key'];
     for (const field of allowedFields) {
         if (data[field] !== undefined) {
             fields.push(`${field} = ?`);
-            values.push(data[field]);
+            values.push(SENSITIVE_FIELDS.has(field) ? encrypt(data[field]) : data[field]);
         }
     }
 
@@ -78,10 +84,14 @@ export function softDeleteServer(db: Database, id: string): void {
 }
 
 export function upsertServer(db: Database, server: any): void {
-    // Preserve locally cached credentials if they exist
+    // Preserve locally cached (already encrypted) credentials if they exist
     const existing = db.exec('SELECT password, ssh_key FROM servers WHERE id = ?', [server.id]);
     const cachedPassword = existing.length > 0 && existing[0].values.length > 0 ? existing[0].values[0][0] : null;
     const cachedSshKey = existing.length > 0 && existing[0].values.length > 0 ? existing[0].values[0][1] : null;
+
+    // Incoming server.password from API is plaintext — encrypt before storing
+    const password = server.password ? encrypt(server.password) : (cachedPassword as string | null) || null;
+    const sshKey = server.ssh_key ? encrypt(server.ssh_key) : (cachedSshKey as string | null) || null;
 
     db.run(
         `INSERT OR REPLACE INTO servers (id, name, ip_address, os, region, username, password, ssh_key, is_online, last_checked_at, is_deleted, deleted_at, created_by, can_edit, can_delete, _is_local, _local_updated_at)
@@ -90,8 +100,7 @@ export function upsertServer(db: Database, server: any): void {
             server.id, server.name, server.ip_address,
             server.os || null, server.region || null,
             server.username || null,
-            server.password || cachedPassword || null,
-            server.ssh_key || cachedSshKey || null,
+            password, sshKey,
             server.is_online === true ? 1 : server.is_online === false ? 0 : null,
             server.last_checked_at || null,
             server.is_deleted ? 1 : 0, server.deleted_at || null,
@@ -105,8 +114,8 @@ export function updateCredentials(db: Database, id: string, creds: { username?: 
     const fields: string[] = [];
     const values: any[] = [];
     if (creds.username !== undefined) { fields.push('username = ?'); values.push(creds.username); }
-    if (creds.password !== undefined) { fields.push('password = ?'); values.push(creds.password); }
-    if (creds.ssh_key !== undefined) { fields.push('ssh_key = ?'); values.push(creds.ssh_key); }
+    if (creds.password !== undefined) { fields.push('password = ?'); values.push(encrypt(creds.password)); }
+    if (creds.ssh_key !== undefined) { fields.push('ssh_key = ?'); values.push(encrypt(creds.ssh_key)); }
     if (fields.length === 0) return;
     values.push(id);
     db.run(`UPDATE servers SET ${fields.join(', ')} WHERE id = ?`, values);

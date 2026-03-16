@@ -7,6 +7,7 @@ import { OfflineProvider } from './contexts/OfflineContext';
 import { AutoLogout } from './components/AutoLogout';
 import { ToastProvider } from './components/Toast';
 import React, { Suspense, useState, useEffect } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import api from './utils/api';
 import { installOfflineAdapter } from './utils/offlineAdapter';
 
@@ -57,6 +58,7 @@ function App() {
       <ToastProvider>
       <AutoLogout />
       <Router>
+        <ErrorBoundary>
         <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -93,6 +95,7 @@ function App() {
             </Route>
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </Router>
       </ToastProvider>
       </NotificationsProvider>

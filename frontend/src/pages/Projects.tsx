@@ -5,6 +5,7 @@ import { Plus, Search, Server, Database, Globe, AlertCircle } from 'lucide-react
 import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { Select } from '../components/Select';
+import type { ProjectListItem } from '../types/api';
 
 export function Projects() {
     const [searchParams] = useSearchParams();
@@ -32,7 +33,7 @@ export function Projects() {
 
     const filteredProjects = useMemo(() => {
         if (!projects) return [];
-        return projects.filter((project: any) => {
+        return projects.filter((project: ProjectListItem) => {
             // Environment Filter
             const matchesEnv = environmentFilter === 'All Environments' || project.environment === environmentFilter;
 
@@ -148,7 +149,7 @@ export function Projects() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project: any) => (
+                    {filteredProjects.map((project: ProjectListItem) => (
                         <Link to={`/projects/${project.id}`} key={project.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden hover:border-brand-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-500/10">
                             <div className="p-5 flex-1">
                                 <div className="flex items-center justify-between mb-3">

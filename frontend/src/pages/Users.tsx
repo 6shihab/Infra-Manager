@@ -4,6 +4,7 @@ import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff } fr
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import type { ApiError } from '../types/api';
 
 interface User {
     id: string;
@@ -61,8 +62,8 @@ export function Users() {
             setFullName('');
             setIsSuperuser(false);
             fetchUsers();
-        } catch (err: any) {
-            const msg = err.response?.data?.detail;
+        } catch (err: unknown) {
+            const msg = (err as ApiError)?.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to create user');
         }
     };
@@ -72,8 +73,8 @@ export function Users() {
             await api.delete(`/users/${id}`);
             setUsers(users.filter(u => u.id !== id));
             setConfirmDelete(null);
-        } catch (err: any) {
-            const msg = err.response?.data?.detail;
+        } catch (err: unknown) {
+            const msg = (err as ApiError)?.response?.data?.detail;
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg) || 'Failed to delete user');
             setConfirmDelete(null);
         }

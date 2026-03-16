@@ -6,14 +6,15 @@ import api from '../utils/api';
 import { formatDateTime } from '../utils/dateUtils';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import type { ServerListItem, ApiError } from '../types/api';
 
 export function Servers() {
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const queryClient = useQueryClient();
     const toast = useToast();
-    const canEdit = (server: any) => server.can_edit === true;
-    const canDelete = (server: any) => server.can_delete === true;
+    const canEdit = (server: ServerListItem) => server.can_edit === true;
+    const canDelete = (server: ServerListItem) => server.can_delete === true;
 
     const { data: servers, isLoading } = useQuery({
         queryKey: ['servers'],
@@ -31,15 +32,15 @@ export function Servers() {
             queryClient.invalidateQueries({ queryKey: ['servers'] });
             toast.success('Server deleted successfully');
         },
-        onError: (err: any) => {
-            const detail = err?.response?.data?.detail || 'Failed to delete server';
-            toast.error(detail);
+        onError: (err: unknown) => {
+            const detail = (err as ApiError)?.response?.data?.detail || 'Failed to delete server';
+            toast.error(typeof detail === 'string' ? detail : 'Failed to delete server');
         }
     });
 
     const filteredServers = useMemo(() => {
         if (!servers) return [];
-        return servers.filter((server: any) => {
+        return servers.filter((server: ServerListItem) => {
             const query = searchQuery.toLowerCase();
             return !query ||
                 server.name.toLowerCase().includes(query) ||
@@ -119,7 +120,7 @@ export function Servers() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredServers.map((server: any) => (
+                    {filteredServers.map((server: ServerListItem) => (
                         <div key={server.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden border border-dark-border hover:border-brand-500/50 transition-all duration-300">
                             <div className="p-5 flex-1 relative">
                                 {(canEdit(server) || canDelete(server)) && (

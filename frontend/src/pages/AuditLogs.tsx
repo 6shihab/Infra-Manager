@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { Navigate } from 'react-router-dom';
 import { Select } from '../components/Select';
+import type { AuditLogEntry } from '../types/api';
 
 const ACTION_OPTIONS = [
     'CREATED', 'UPDATED', 'DELETED', 'LOGIN', 'LOGOUT',
@@ -20,7 +21,7 @@ const RESOURCE_TYPE_OPTIONS = [
 export function AuditLogs() {
     const { user } = useAuth();
     const { isOnline } = useOffline();
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<AuditLogEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalCount, setTotalCount] = useState(0);
 

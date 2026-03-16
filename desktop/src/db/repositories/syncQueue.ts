@@ -1,5 +1,6 @@
 import { Database } from 'sql.js';
 import { saveDb } from '../index';
+import * as crypto from 'crypto';
 
 export interface SyncQueueEntry {
     id: number;
@@ -8,6 +9,7 @@ export interface SyncQueueEntry {
     endpoint: string;
     body: string | null;
     temp_id: string | null;
+    idempotency_key: string | null;
     status: string;
     error_message: string | null;
     retry_count: number;
@@ -15,16 +17,18 @@ export interface SyncQueueEntry {
 }
 
 export function enqueue(db: Database, method: string, endpoint: string, body?: any, tempId?: string): void {
+    // Generate idempotency key for POST requests to prevent duplicate creation on retry
+    const idempotencyKey = method.toUpperCase() === 'POST' ? crypto.randomUUID() : null;
     db.run(
-        `INSERT INTO _sync_queue (method, endpoint, body, temp_id, status, created_at)
-         VALUES (?, ?, ?, ?, 'pending', datetime('now'))`,
-        [method, endpoint, body ? JSON.stringify(body) : null, tempId || null]
+        `INSERT INTO _sync_queue (method, endpoint, body, temp_id, idempotency_key, status, created_at)
+         VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))`,
+        [method, endpoint, body ? JSON.stringify(body) : null, tempId || null, idempotencyKey]
     );
     saveDb();
 }
 
 export function getPending(db: Database): SyncQueueEntry[] {
-    const result = db.exec("SELECT id, created_at, method, endpoint, body, temp_id, status, error_message, retry_count, synced_at FROM _sync_queue WHERE status = 'pending' ORDER BY id ASC");
+    const result = db.exec("SELECT id, created_at, method, endpoint, body, temp_id, idempotency_key, status, error_message, retry_count, synced_at FROM _sync_queue WHERE status = 'pending' ORDER BY id ASC");
     if (result.length === 0) return [];
     return result[0].values.map(row => ({
         id: row[0] as number,
@@ -33,10 +37,11 @@ export function getPending(db: Database): SyncQueueEntry[] {
         endpoint: row[3] as string,
         body: row[4] as string | null,
         temp_id: row[5] as string | null,
-        status: row[6] as string,
-        error_message: row[7] as string | null,
-        retry_count: row[8] as number,
-        synced_at: row[9] as string | null,
+        idempotency_key: row[6] as string | null,
+        status: row[7] as string,
+        error_message: row[8] as string | null,
+        retry_count: row[9] as number,
+        synced_at: row[10] as string | null,
     }));
 }
 

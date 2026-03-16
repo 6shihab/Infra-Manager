@@ -1,6 +1,7 @@
 import { Database } from 'sql.js';
 import { saveDb } from '../index';
 import * as crypto from 'crypto';
+import { encrypt, decrypt } from '../../crypto';
 
 function generateUUID(): string {
     return crypto.randomUUID();
@@ -32,7 +33,7 @@ export function getDatabaseCredentials(db: Database, id: string): any | null {
     const result = db.exec('SELECT username, password FROM database_engines WHERE id = ?', [id]);
     if (result.length === 0 || result[0].values.length === 0) return null;
     const row = result[0].values[0];
-    return { username: row[0], password: row[1] };
+    return { username: row[0] as string | null, password: decrypt(row[1] as string | null) };
 }
 
 export function createDatabase(db: Database, data: any): any {
@@ -41,7 +42,7 @@ export function createDatabase(db: Database, data: any): any {
     db.run(
         `INSERT INTO database_engines (id, name, engine, host, port, connection_string_format, username, password, is_deleted, created_by, can_edit, can_delete, _is_local, _local_updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, 1, 1, ?)`,
-        [id, data.name, data.engine, data.host, data.port || null, data.connection_string_format || null, data.username || null, data.password || null, data.created_by || null, now]
+        [id, data.name, data.engine, data.host, data.port || null, data.connection_string_format || null, data.username || null, encrypt(data.password), data.created_by || null, now]
     );
     saveDb();
     return { id, ...data, is_deleted: false, _is_local: true };
@@ -55,7 +56,7 @@ export function updateDatabase(db: Database, id: string, data: any): any {
     for (const field of allowedFields) {
         if (data[field] !== undefined) {
             fields.push(`${field} = ?`);
-            values.push(data[field]);
+            values.push(field === 'password' ? encrypt(data[field]) : data[field]);
         }
     }
 
@@ -77,8 +78,12 @@ export function softDeleteDatabase(db: Database, id: string): void {
 }
 
 export function upsertDatabase(db: Database, engine: any): void {
+    // Preserve locally cached (already encrypted) password if it exists
     const existing = db.exec('SELECT password FROM database_engines WHERE id = ?', [engine.id]);
     const cachedPassword = existing.length > 0 && existing[0].values.length > 0 ? existing[0].values[0][0] : null;
+
+    // Incoming engine.password from API is plaintext — encrypt before storing
+    const password = engine.password ? encrypt(engine.password) : (cachedPassword as string | null) || null;
 
     db.run(
         `INSERT OR REPLACE INTO database_engines (id, name, engine, host, port, connection_string_format, username, password, is_deleted, deleted_at, created_by, can_edit, can_delete, _is_local, _local_updated_at)
@@ -87,7 +92,7 @@ export function upsertDatabase(db: Database, engine: any): void {
             engine.id, engine.name, engine.engine, engine.host, engine.port || null,
             engine.connection_string_format || null,
             engine.username || null,
-            engine.password || cachedPassword || null,
+            password,
             engine.is_deleted ? 1 : 0, engine.deleted_at || null,
             engine.created_by || null,
             engine.can_edit ? 1 : 0, engine.can_delete ? 1 : 0,
@@ -99,7 +104,7 @@ export function updateCredentials(db: Database, id: string, creds: { username?: 
     const fields: string[] = [];
     const values: any[] = [];
     if (creds.username !== undefined) { fields.push('username = ?'); values.push(creds.username); }
-    if (creds.password !== undefined) { fields.push('password = ?'); values.push(creds.password); }
+    if (creds.password !== undefined) { fields.push('password = ?'); values.push(encrypt(creds.password)); }
     if (fields.length === 0) return;
     values.push(id);
     db.run(`UPDATE database_engines SET ${fields.join(', ')} WHERE id = ?`, values);
