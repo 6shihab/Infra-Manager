@@ -245,8 +245,8 @@ function createTray(): void {
 
 function getIconPath(): string {
   return app.isPackaged
-    ? path.join(process.resourcesPath, 'assets', 'favicon.png')
-    : path.join(__dirname, '../../desktop/assets/favicon.png');
+    ? path.join(process.resourcesPath, 'assets', 'favicon.ico')
+    : path.join(__dirname, '../../desktop/assets/favicon.ico');
 }
 
 // ── IPC handlers ─────────────────────────────────────────────────────────────

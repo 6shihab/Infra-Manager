@@ -16,13 +16,17 @@ extraResources:
     to: renderer
     filter:
       - "**/*"
+  - from: assets
+    to: assets
+    filter:
+      - favicon.ico
 
 win:
   target:
     - target: nsis
       arch:
         - x64
-  icon: assets/favicon.png
+  icon: assets/favicon.ico
 
 nsis:
   oneClick: false
