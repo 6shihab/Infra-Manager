@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
-import { KeySquare, Lock, LogIn, Shield, ArrowLeft, WifiOff } from 'lucide-react';
+import { KeySquare, Lock, LogIn, Shield, ArrowLeft, WifiOff, Fingerprint } from 'lucide-react';
+import { startAuthentication } from '@simplewebauthn/browser';
 import api from '../utils/api';
 import type { ApiError } from '../types/api';
 
@@ -16,6 +17,10 @@ export function Login() {
     const [totpRequired, setTotpRequired] = useState(false);
     const [tempToken, setTempToken] = useState('');
     const [totpCode, setTotpCode] = useState('');
+
+    // Passkey state
+    const [passkeyLoading, setPasskeyLoading] = useState(false);
+    const isPasskeyAvailable = typeof window !== 'undefined' && !!window.PublicKeyCredential;
 
     const { login, token } = useAuth();
     const { isOnline } = useOffline();
@@ -112,6 +117,40 @@ export function Login() {
         setError('');
     };
 
+    const handlePasskeyLogin = async () => {
+        setError('');
+        setPasskeyLoading(true);
+        try {
+            const optionsRes = await api.post('/auth/webauthn/login/options',
+                email ? { email } : undefined
+            );
+            const options = optionsRes.data.options;
+
+            const credential = await startAuthentication({ optionsJSON: options });
+
+            const verifyRes = await api.post('/auth/webauthn/login/verify', { credential });
+
+            login(verifyRes.data.access_token);
+            navigate('/');
+        } catch (err: unknown) {
+            const axiosErr = err as ApiError;
+            if (axiosErr.response?.data?.detail) {
+                const detail = axiosErr.response.data.detail;
+                setError(typeof detail === 'string' ? detail : 'Passkey sign-in failed.');
+            } else if (err instanceof Error) {
+                if (err.name === 'NotAllowedError') {
+                    setError('');  // User cancelled — don't show error
+                } else {
+                    setError(err.message || 'Passkey sign-in failed.');
+                }
+            } else {
+                setError('Passkey sign-in failed.');
+            }
+        } finally {
+            setPasskeyLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="w-full max-w-md space-y-8 glass-panel p-8 sm:p-10 rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -178,6 +217,27 @@ export function Login() {
                                 </span>
                                 {loading ? 'Signing in...' : 'Sign in'}
                             </button>
+
+                            {isPasskeyAvailable && (
+                                <>
+                                    <div className="flex items-center gap-3 text-gray-500 text-xs">
+                                        <div className="flex-1 border-t border-dark-border" />
+                                        <span>or</span>
+                                        <div className="flex-1 border-t border-dark-border" />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handlePasskeyLogin}
+                                        disabled={passkeyLoading}
+                                        className="group relative w-full flex justify-center py-3 px-4 border border-dark-border text-sm font-medium rounded-xl text-gray-300 bg-white/5 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 focus:ring-offset-dark-bg transition-all disabled:opacity-50"
+                                    >
+                                        <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                                            <Fingerprint className="h-5 w-5 text-brand-400 group-hover:text-brand-300 transition-colors" />
+                                        </span>
+                                        {passkeyLoading ? 'Waiting for passkey...' : 'Sign in with passkey'}
+                                    </button>
+                                </>
+                            )}
                         </form>
                     </>
                 ) : (

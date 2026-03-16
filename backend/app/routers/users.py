@@ -20,7 +20,13 @@ def read_users(skip: int = 0, limit: int = 100, response: Response = None, db: S
     total = base_q.count()
     if response:
         response.headers["X-Total-Count"] = str(total)
-    return base_q.offset(skip).limit(limit).all()
+    users = base_q.offset(skip).limit(limit).all()
+    result = []
+    for u in users:
+        resp = schemas.UserResponse.model_validate(u)
+        resp.has_passkeys = len(u.webauthn_credentials) > 0
+        result.append(resp)
+    return result
 
 @router.post("/", response_model=schemas.UserResponse)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_superuser)):

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare, WifiOff } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare, Fingerprint, WifiOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { Select } from '../components/Select';
 import { TOTPSetupModal } from '../components/TOTPSetupModal';
 import { TOTPDisableModal } from '../components/TOTPDisableModal';
 import { BackupCodesModal } from '../components/BackupCodesModal';
+import { PasskeySetupModal } from '../components/PasskeySetupModal';
+import { PasskeyManageModal } from '../components/PasskeyManageModal';
 import type { ApiError } from '../types/api';
 
 interface Setting {
@@ -37,9 +39,18 @@ export function Settings() {
     const [backupCodesOpen, setBackupCodesOpen] = useState(false);
     const [totpEnabled, setTotpEnabled] = useState(user?.totp_enabled ?? false);
 
+    // Passkey state
+    const [passkeySetupOpen, setPasskeySetupOpen] = useState(false);
+    const [passkeyManageOpen, setPasskeyManageOpen] = useState(false);
+    const [hasPasskeys, setHasPasskeys] = useState(user?.has_passkeys ?? false);
+
     useEffect(() => {
         setTotpEnabled(user?.totp_enabled ?? false);
     }, [user?.totp_enabled]);
+
+    useEffect(() => {
+        setHasPasskeys(user?.has_passkeys ?? false);
+    }, [user?.has_passkeys]);
 
     useEffect(() => {
         fetchSettings();
@@ -119,6 +130,16 @@ export function Settings() {
     const handleTotpDisabled = () => {
         setTotpEnabled(false);
         setTotpDisableOpen(false);
+        refreshUser();
+    };
+
+    const handlePasskeyRegistered = () => {
+        setHasPasskeys(true);
+        setPasskeySetupOpen(false);
+        refreshUser();
+    };
+
+    const handlePasskeyChanged = () => {
         refreshUser();
     };
 
@@ -266,9 +287,68 @@ export function Settings() {
                 )}
             </div>
 
+            {/* Passkeys Section */}
+            <div className="glass-panel p-6 rounded-xl space-y-4">
+                <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
+                    <Fingerprint className="h-6 w-6 text-brand-500" />
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Passkeys</h2>
+                        <p className="text-sm text-gray-400">Sign in without a password using your device's biometrics or security key.</p>
+                    </div>
+                </div>
+
+                {hasPasskeys ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                                Active
+                            </span>
+                            <p className="text-sm text-gray-400">You have passkeys registered for passwordless sign-in.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                onClick={() => setPasskeyManageOpen(true)}
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
+                            >
+                                <Fingerprint className="mr-2 h-4 w-4" />
+                                Manage Passkeys
+                            </button>
+                            <button
+                                onClick={() => setPasskeySetupOpen(true)}
+                                disabled={offlineElectron}
+                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                title={offlineElectron ? 'Requires connection' : undefined}
+                            >
+                                {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
+                                {offlineElectron ? 'Requires Connection' : 'Add Passkey'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-400">
+                            Use Windows Hello, Touch ID, or a security key for fast, secure passwordless sign-in.
+                        </p>
+                        <button
+                            onClick={() => setPasskeySetupOpen(true)}
+                            disabled={offlineElectron}
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            title={offlineElectron ? 'Requires connection' : undefined}
+                        >
+                            {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
+                            {offlineElectron ? 'Requires Connection' : 'Set Up a Passkey'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
             <TOTPSetupModal open={totpSetupOpen} onClose={() => setTotpSetupOpen(false)} onEnabled={handleTotpEnabled} />
             <TOTPDisableModal open={totpDisableOpen} onClose={() => setTotpDisableOpen(false)} onDisabled={handleTotpDisabled} />
             <BackupCodesModal open={backupCodesOpen} onClose={() => setBackupCodesOpen(false)} />
+            <PasskeySetupModal open={passkeySetupOpen} onClose={() => setPasskeySetupOpen(false)} onRegistered={handlePasskeyRegistered} />
+            <PasskeyManageModal open={passkeyManageOpen} onClose={() => setPasskeyManageOpen(false)} onChanged={handlePasskeyChanged} onAddNew={() => setPasskeySetupOpen(true)} />
 
             {/* Desktop Connection Settings (Electron only) */}
             {window.electronAPI && (

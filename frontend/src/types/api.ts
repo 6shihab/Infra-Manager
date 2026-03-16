@@ -12,6 +12,17 @@ export interface User {
     is_active: boolean;
     is_superuser: boolean;
     totp_enabled: boolean;
+    has_passkeys: boolean;
+}
+
+// --- WebAuthn / Passkey ---
+export interface PasskeyCredential {
+    id: string;
+    credential_id: string;
+    device_name: string | null;
+    created_at: string;
+    last_used_at: string | null;
+    transports: string[] | null;
 }
 
 // --- Group ---

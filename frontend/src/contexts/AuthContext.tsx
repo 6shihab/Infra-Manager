@@ -11,6 +11,7 @@ interface User {
     full_name: string;
     is_superuser: boolean;
     totp_enabled: boolean;
+    has_passkeys: boolean;
 }
 
 interface AuthContextType {

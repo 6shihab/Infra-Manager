@@ -7,6 +7,7 @@ function rowToUser(columns: string[], row: any[]): any {
     obj.is_active = obj.is_active === 1;
     obj.is_superuser = obj.is_superuser === 1;
     obj.totp_enabled = obj.totp_enabled === 1;
+    obj.has_passkeys = obj.has_passkeys === 1;
     return obj;
 }
 
@@ -24,9 +25,9 @@ export function getUserById(db: Database, id: string): any | null {
 
 export function upsertUser(db: Database, user: any): void {
     db.run(
-        `INSERT OR REPLACE INTO users (id, email, full_name, is_active, is_superuser, totp_enabled)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [user.id, user.email, user.full_name || null, user.is_active ? 1 : 0, user.is_superuser ? 1 : 0, user.totp_enabled ? 1 : 0]
+        `INSERT OR REPLACE INTO users (id, email, full_name, is_active, is_superuser, totp_enabled, has_passkeys)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [user.id, user.email, user.full_name || null, user.is_active ? 1 : 0, user.is_superuser ? 1 : 0, user.totp_enabled ? 1 : 0, user.has_passkeys ? 1 : 0]
     );
 }
 

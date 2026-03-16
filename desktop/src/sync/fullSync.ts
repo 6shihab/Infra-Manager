@@ -80,6 +80,7 @@ export class FullSync {
                 full_name: me.full_name,
                 is_superuser: me.is_superuser,
                 totp_enabled: me.totp_enabled,
+                has_passkeys: me.has_passkeys ?? false,
                 token: this.token,
                 cached_at: new Date().toISOString(),
             });

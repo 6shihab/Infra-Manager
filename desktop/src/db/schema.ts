@@ -3,6 +3,7 @@ import { migration001 } from './migrations/001_initial';
 import { migration002 } from './migrations/002_sync_log';
 import { migration003 } from './migrations/003_idempotency_key';
 import { migration004 } from './migrations/004_add_indexes';
+import { migration005 } from './migrations/005_user_passkey_flag';
 
 interface Migration {
     version: number;
@@ -15,6 +16,7 @@ const migrations: Migration[] = [
     { version: 2, name: 'sync_log_table', up: migration002 },
     { version: 3, name: 'idempotency_key', up: migration003 },
     { version: 4, name: 'add_indexes', up: migration004 },
+    { version: 5, name: 'user_passkey_flag', up: migration005 },
 ];
 
 export function runMigrations(db: Database): void {

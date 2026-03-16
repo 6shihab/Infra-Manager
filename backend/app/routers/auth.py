@@ -38,8 +38,10 @@ def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestFor
     return {"access_token": access_token, "token_type": "bearer", "requires_totp": False}
 
 @router.get("/me", response_model=schemas.UserResponse)
-def read_users_me(current_user: models.User = Depends(dependencies.get_current_user)):
-    return current_user
+def read_users_me(current_user: models.User = Depends(dependencies.get_current_user), db: Session = Depends(get_db)):
+    resp = schemas.UserResponse.model_validate(current_user)
+    resp.has_passkeys = len(current_user.webauthn_credentials) > 0
+    return resp
 
 @router.post("/logout")
 def logout(token: str = Depends(dependencies.oauth2_scheme), db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user)):

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/types": "^12.0.0",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",

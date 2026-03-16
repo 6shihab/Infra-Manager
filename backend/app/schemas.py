@@ -39,6 +39,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: uuid.UUID
     totp_enabled: bool = False
+    has_passkeys: bool = False
     class Config:
         from_attributes = True
 
@@ -386,6 +387,36 @@ class TOTPDisableRequest(BaseModel):
 class TOTPLoginRequest(BaseModel):
     totp_token: str
     code: str
+
+# --- WebAuthn / Passkey Schemas ---
+class WebAuthnRegistrationOptionsResponse(BaseModel):
+    options: dict
+
+class WebAuthnRegistrationVerifyRequest(BaseModel):
+    credential: dict
+    device_name: str = Field(default="My Passkey", max_length=256)
+
+class WebAuthnCredentialResponse(BaseModel):
+    id: uuid.UUID
+    credential_id: str
+    device_name: Optional[str] = None
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+    transports: Optional[List[str]] = None
+    class Config:
+        from_attributes = True
+
+class WebAuthnCredentialUpdate(BaseModel):
+    device_name: str = Field(max_length=256)
+
+class WebAuthnAuthenticationOptionsRequest(BaseModel):
+    email: Optional[str] = None
+
+class WebAuthnAuthenticationOptionsResponse(BaseModel):
+    options: dict
+
+class WebAuthnAuthenticationVerifyRequest(BaseModel):
+    credential: dict
 
 # --- Audit Schemas ---
 class AuditLogBase(BaseModel):

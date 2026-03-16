@@ -14,9 +14,21 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     enable_docs: bool = True
 
+    # WebAuthn / Passkey
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "InfraManager"
+    webauthn_origin: str | list[str] = ["http://localhost:5173", "http://localhost:8080", "app://infra-manager"]
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
+
+    @field_validator("webauthn_origin", mode="before")
+    @classmethod
+    def assemble_webauthn_origins(cls, v: Any) -> Any:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",") if i.strip()]
         return v

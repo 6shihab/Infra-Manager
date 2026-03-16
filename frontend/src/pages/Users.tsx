@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, ShieldOff } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, ShieldOff, Fingerprint } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -14,6 +14,7 @@ interface User {
     is_active: boolean;
     is_superuser: boolean;
     totp_enabled?: boolean;
+    has_passkeys?: boolean;
 }
 
 export function Users() {
@@ -41,6 +42,10 @@ export function Users() {
     // Disable 2FA confirm state
     const [confirm2faDisable, setConfirm2faDisable] = useState<{ id: string; name: string } | null>(null);
     const [disabling2fa, setDisabling2fa] = useState(false);
+
+    // Remove passkeys confirm state
+    const [confirmPasskeyRemove, setConfirmPasskeyRemove] = useState<{ id: string; name: string } | null>(null);
+    const [removingPasskeys, setRemovingPasskeys] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -145,6 +150,22 @@ export function Users() {
             setConfirm2faDisable(null);
         } finally {
             setDisabling2fa(false);
+        }
+    };
+
+    const handleAdminRemovePasskeys = async (userId: string) => {
+        setRemovingPasskeys(true);
+        try {
+            await api.delete(`/auth/webauthn/admin/${userId}`);
+            toast.success('Passkeys removed for user.');
+            setConfirmPasskeyRemove(null);
+            fetchUsers();
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            toast.error(typeof detail === 'string' ? detail : 'Failed to remove passkeys.');
+            setConfirmPasskeyRemove(null);
+        } finally {
+            setRemovingPasskeys(false);
         }
     };
 
@@ -290,13 +311,21 @@ export function Users() {
                                         )}
                                     </td>
                                     <td className="py-4 px-4 whitespace-nowrap">
-                                        {u.totp_enabled ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                <Shield className="w-3 h-3 mr-1" /> Enabled
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-600">—</span>
-                                        )}
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {u.totp_enabled && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                    <Shield className="w-3 h-3 mr-1" /> TOTP
+                                                </span>
+                                            )}
+                                            {u.has_passkeys && (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                                                    <Fingerprint className="w-3 h-3 mr-1" /> Passkey
+                                                </span>
+                                            )}
+                                            {!u.totp_enabled && !u.has_passkeys && (
+                                                <span className="text-xs text-gray-600">—</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-4 px-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="inline-flex items-center gap-1">
@@ -313,9 +342,19 @@ export function Users() {
                                                     onClick={() => setConfirm2faDisable({ id: u.id, name: u.full_name || u.email })}
                                                     disabled={u.id === currentUser?.id || offlineElectron}
                                                     className="text-gray-500 hover:text-orange-400 p-2 rounded-lg hover:bg-orange-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
-                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own 2FA' : offlineElectron ? 'Requires connection' : 'Disable 2FA'}
+                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own 2FA' : offlineElectron ? 'Requires connection' : 'Disable TOTP'}
                                                 >
                                                     <ShieldOff className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            {u.has_passkeys && (
+                                                <button
+                                                    onClick={() => setConfirmPasskeyRemove({ id: u.id, name: u.full_name || u.email })}
+                                                    disabled={u.id === currentUser?.id || offlineElectron}
+                                                    className="text-gray-500 hover:text-orange-400 p-2 rounded-lg hover:bg-orange-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own passkeys' : offlineElectron ? 'Requires connection' : 'Remove Passkeys'}
+                                                >
+                                                    <Fingerprint className="h-4 w-4" />
                                                 </button>
                                             )}
                                             <button
@@ -407,6 +446,16 @@ export function Users() {
             loading={disabling2fa}
             onConfirm={() => confirm2faDisable && handleAdminDisable2fa(confirm2faDisable.id)}
             onCancel={() => setConfirm2faDisable(null)}
+        />
+
+        <ConfirmDialog
+            open={confirmPasskeyRemove !== null}
+            title="Remove Passkeys"
+            message={`Remove all passkeys for "${confirmPasskeyRemove?.name}"? They will no longer be able to use passwordless sign-in.`}
+            confirmLabel="Remove Passkeys"
+            loading={removingPasskeys}
+            onConfirm={() => confirmPasskeyRemove && handleAdminRemovePasskeys(confirmPasskeyRemove.id)}
+            onCancel={() => setConfirmPasskeyRemove(null)}
         />
         </>
     );

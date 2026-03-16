@@ -51,7 +51,7 @@ export function registerOfflineIpcHandlers(): void {
     });
 
     // Cache session after login — saves token + user to SQLite, updates sync engine
-    ipcMain.handle('offline:cacheSession', async (_event, token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean; totp_enabled: boolean }) => {
+    ipcMain.handle('offline:cacheSession', async (_event, token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean; totp_enabled: boolean; has_passkeys?: boolean }) => {
         const db = await getDb();
         sessionRepo.saveSession(db, {
             user_id: user.id,
@@ -59,6 +59,7 @@ export function registerOfflineIpcHandlers(): void {
             full_name: user.full_name,
             is_superuser: user.is_superuser,
             totp_enabled: user.totp_enabled,
+            has_passkeys: user.has_passkeys ?? false,
             token,
             cached_at: new Date().toISOString(),
         });

@@ -110,6 +110,7 @@ class User(Base):
 
     groups = relationship("Group", secondary=user_group_link, back_populates="users")
     created_projects = relationship("Project", back_populates="creator", foreign_keys="Project.created_by")
+    webauthn_credentials = relationship("WebAuthnCredential", back_populates="user", cascade="all, delete-orphan")
 
 class Group(Base):
     __tablename__ = "groups"
@@ -292,3 +293,18 @@ class TokenBlocklist(Base):
     id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     jti = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class WebAuthnCredential(Base):
+    __tablename__ = "webauthn_credentials"
+
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    credential_id = Column(String, unique=True, nullable=False, index=True)
+    public_key = Column(EncryptedString, nullable=False)
+    sign_count = Column(Integer, default=0, nullable=False)
+    transports = Column(JSON, nullable=True)
+    device_name = Column(String(256), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="webauthn_credentials")
