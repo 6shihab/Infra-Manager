@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, ShieldOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 import type { ApiError } from '../types/api';
 
 interface User {
@@ -12,11 +13,13 @@ interface User {
     full_name: string;
     is_active: boolean;
     is_superuser: boolean;
+    totp_enabled?: boolean;
 }
 
 export function Users() {
     const { user: currentUser } = useAuth();
     const { isOnline } = useOffline();
+    const toast = useToast();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -28,6 +31,16 @@ export function Users() {
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [isSuperuser, setIsSuperuser] = useState(false);
+
+    // Reset password inline panel state
+    const [expandedPwRow, setExpandedPwRow] = useState<string | null>(null);
+    const [pwForm, setPwForm] = useState({ next: '', confirm: '' });
+    const [pwSaving, setPwSaving] = useState(false);
+    const [pwMsg, setPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // Disable 2FA confirm state
+    const [confirm2faDisable, setConfirm2faDisable] = useState<{ id: string; name: string } | null>(null);
+    const [disabling2fa, setDisabling2fa] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -80,6 +93,61 @@ export function Users() {
         }
     };
 
+    const togglePwRow = (userId: string) => {
+        if (expandedPwRow === userId) {
+            setExpandedPwRow(null);
+            setPwForm({ next: '', confirm: '' });
+            setPwMsg(null);
+        } else {
+            setExpandedPwRow(userId);
+            setPwForm({ next: '', confirm: '' });
+            setPwMsg(null);
+        }
+    };
+
+    const handleResetPassword = async (userId: string) => {
+        if (pwForm.next !== pwForm.confirm) {
+            setPwMsg({ text: 'Passwords do not match.', type: 'error' });
+            return;
+        }
+        if (!pwForm.next) {
+            setPwMsg({ text: 'Password cannot be empty.', type: 'error' });
+            return;
+        }
+        setPwSaving(true);
+        setPwMsg(null);
+        try {
+            await api.put(`/users/${userId}/password`, { new_password: pwForm.next });
+            toast.success('Password reset successfully.');
+            setExpandedPwRow(null);
+            setPwForm({ next: '', confirm: '' });
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            let msg = 'Failed to reset password.';
+            if (typeof detail === 'string') msg = detail;
+            else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
+            setPwMsg({ text: msg, type: 'error' });
+        } finally {
+            setPwSaving(false);
+        }
+    };
+
+    const handleAdminDisable2fa = async (userId: string) => {
+        setDisabling2fa(true);
+        try {
+            await api.delete(`/auth/totp/admin/${userId}`);
+            toast.success('Two-factor authentication disabled for user.');
+            setConfirm2faDisable(null);
+            fetchUsers();
+        } catch (err: unknown) {
+            const detail = (err as ApiError)?.response?.data?.detail;
+            toast.error(typeof detail === 'string' ? detail : 'Failed to disable 2FA.');
+            setConfirm2faDisable(null);
+        } finally {
+            setDisabling2fa(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
@@ -98,6 +166,8 @@ export function Users() {
         );
     }
 
+    const offlineElectron = !isOnline && !!window.electronAPI;
+
     return (
         <><div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -109,11 +179,11 @@ export function Users() {
                 </div>
                 <button
                     onClick={() => setIsAdding(!isAdding)}
-                    disabled={!isOnline && !!window.electronAPI}
+                    disabled={offlineElectron}
                     className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={!isOnline && window.electronAPI ? 'Requires connection' : undefined}
+                    title={offlineElectron ? 'Requires connection' : undefined}
                 >
-                    {!isOnline && window.electronAPI ? <WifiOff className="h-4 w-4 mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                    {offlineElectron ? <WifiOff className="h-4 w-4 mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
                     {isAdding ? 'Cancel' : 'Add User'}
                 </button>
             </div>
@@ -189,11 +259,13 @@ export function Users() {
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
+                                <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">2FA</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border">
                             {users.map((u) => (
+                                <>
                                 <tr key={u.id} className="hover:bg-white/5 transition-colors group">
                                     <td className="py-4 px-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -217,21 +289,97 @@ export function Users() {
                                             </span>
                                         )}
                                     </td>
+                                    <td className="py-4 px-4 whitespace-nowrap">
+                                        {u.totp_enabled ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                <Shield className="w-3 h-3 mr-1" /> Enabled
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-600">—</span>
+                                        )}
+                                    </td>
                                     <td className="py-4 px-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => setConfirmDelete({ id: u.id, name: u.full_name || u.email })}
-                                            disabled={u.id === currentUser?.id}
-                                            className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500 tooltip-trigger relative"
-                                            title={u.id === currentUser?.id ? "Cannot delete yourself" : "Delete User"}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="inline-flex items-center gap-1">
+                                            <button
+                                                onClick={() => togglePwRow(u.id)}
+                                                disabled={u.id === currentUser?.id || offlineElectron}
+                                                className="text-gray-500 hover:text-brand-400 p-2 rounded-lg hover:bg-brand-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                                                title={u.id === currentUser?.id ? 'Cannot reset your own password here' : offlineElectron ? 'Requires connection' : 'Reset Password'}
+                                            >
+                                                {offlineElectron && u.id !== currentUser?.id ? <WifiOff className="h-4 w-4" /> : <Key className="h-4 w-4" />}
+                                            </button>
+                                            {u.totp_enabled && (
+                                                <button
+                                                    onClick={() => setConfirm2faDisable({ id: u.id, name: u.full_name || u.email })}
+                                                    disabled={u.id === currentUser?.id || offlineElectron}
+                                                    className="text-gray-500 hover:text-orange-400 p-2 rounded-lg hover:bg-orange-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own 2FA' : offlineElectron ? 'Requires connection' : 'Disable 2FA'}
+                                                >
+                                                    <ShieldOff className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setConfirmDelete({ id: u.id, name: u.full_name || u.email })}
+                                                disabled={u.id === currentUser?.id}
+                                                className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                                                title={u.id === currentUser?.id ? "Cannot delete yourself" : "Delete User"}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
+                                {expandedPwRow === u.id && (
+                                    <tr key={`${u.id}-pw`} className="bg-brand-900/10 border-b border-brand-500/10">
+                                        <td colSpan={5} className="px-4 py-4">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+                                                <div className="flex items-center gap-2 text-sm text-gray-400 mr-2 whitespace-nowrap self-center">
+                                                    <Key className="h-4 w-4 text-brand-400" />
+                                                    Reset password for <span className="text-white font-medium">{u.full_name || u.email}</span>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row gap-2 flex-1">
+                                                    <input
+                                                        type="password"
+                                                        placeholder="New password"
+                                                        value={pwForm.next}
+                                                        onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))}
+                                                        className="px-3 py-1.5 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white text-sm w-full sm:w-48"
+                                                    />
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Confirm password"
+                                                        value={pwForm.confirm}
+                                                        onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                                                        className="px-3 py-1.5 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white text-sm w-full sm:w-48"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {pwMsg && (
+                                                        <span className={`text-xs ${pwMsg.type === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>{pwMsg.text}</span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleResetPassword(u.id)}
+                                                        disabled={pwSaving}
+                                                        className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                                                    >
+                                                        {pwSaving ? 'Saving...' : 'Set Password'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => togglePwRow(u.id)}
+                                                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                </>
                             ))}
                             {users.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={4} className="py-8 text-center text-gray-500 text-sm">
+                                    <td colSpan={5} className="py-8 text-center text-gray-500 text-sm">
                                         No users found.
                                     </td>
                                 </tr>
@@ -249,6 +397,16 @@ export function Users() {
             confirmText={confirmDelete?.name}
             onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
             onCancel={() => setConfirmDelete(null)}
+        />
+
+        <ConfirmDialog
+            open={confirm2faDisable !== null}
+            title="Disable Two-Factor Authentication"
+            message={`Disable 2FA for "${confirm2faDisable?.name}"? They will be able to log in with password only until they re-enable it.`}
+            confirmLabel="Disable 2FA"
+            loading={disabling2fa}
+            onConfirm={() => confirm2faDisable && handleAdminDisable2fa(confirm2faDisable.id)}
+            onCancel={() => setConfirm2faDisable(null)}
         />
         </>
     );

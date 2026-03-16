@@ -16,12 +16,6 @@ interface Setting {
     description: string;
 }
 
-interface UserOption {
-    id: string;
-    full_name: string | null;
-    email: string;
-    totp_enabled?: boolean;
-}
 
 export function Settings() {
     const { user, refreshUser } = useAuth();
@@ -37,19 +31,11 @@ export function Settings() {
     const [selfPwSaving, setSelfPwSaving] = useState(false);
     const [selfPwMsg, setSelfPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    // Admin password change state
-    const [allUsers, setAllUsers] = useState<UserOption[]>([]);
-    const [adminPwUserId, setAdminPwUserId] = useState('');
-    const [adminPw, setAdminPw] = useState({ next: '', confirm: '' });
-    const [adminPwSaving, setAdminPwSaving] = useState(false);
-    const [adminPwMsg, setAdminPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
     // TOTP state
     const [totpSetupOpen, setTotpSetupOpen] = useState(false);
     const [totpDisableOpen, setTotpDisableOpen] = useState(false);
     const [backupCodesOpen, setBackupCodesOpen] = useState(false);
     const [totpEnabled, setTotpEnabled] = useState(user?.totp_enabled ?? false);
-    const [adminDisabling2fa, setAdminDisabling2fa] = useState(false);
 
     useEffect(() => {
         setTotpEnabled(user?.totp_enabled ?? false);
@@ -57,17 +43,7 @@ export function Settings() {
 
     useEffect(() => {
         fetchSettings();
-        if (user?.is_superuser) fetchAllUsers();
     }, [user]);
-
-    const fetchAllUsers = async () => {
-        try {
-            const res = await api.get('/users/');
-            setAllUsers(res.data);
-        } catch {
-            // non-critical
-        }
-    };
 
     const fetchSettings = async () => {
         try {
@@ -134,34 +110,6 @@ export function Settings() {
         }
     };
 
-    const handleAdminPwChange = async () => {
-        if (!adminPwUserId) {
-            setAdminPwMsg({ text: 'Please select a user.', type: 'error' });
-            return;
-        }
-        if (adminPw.next !== adminPw.confirm) {
-            setAdminPwMsg({ text: 'New passwords do not match.', type: 'error' });
-            return;
-        }
-        setAdminPwSaving(true);
-        setAdminPwMsg(null);
-        try {
-            await api.put(`/users/${adminPwUserId}/password`, { new_password: adminPw.next });
-            setAdminPwMsg({ text: 'Password changed successfully.', type: 'success' });
-            setAdminPw({ next: '', confirm: '' });
-            setAdminPwUserId('');
-        } catch (err: unknown) {
-            const detail = (err as ApiError)?.response?.data?.detail;
-            let msg = 'Failed to change password.';
-            if (typeof detail === 'string') msg = detail;
-            else if (Array.isArray(detail) && detail.length > 0) msg = detail[0].msg.replace(/^Value error, /, '');
-            setAdminPwMsg({ text: msg, type: 'error' });
-        } finally {
-            setAdminPwSaving(false);
-            setTimeout(() => setAdminPwMsg(null), 4000);
-        }
-    };
-
     const handleTotpEnabled = () => {
         setTotpEnabled(true);
         setTotpSetupOpen(false);
@@ -173,24 +121,6 @@ export function Settings() {
         setTotpDisableOpen(false);
         refreshUser();
     };
-
-    const handleAdminDisable2fa = async () => {
-        if (!adminPwUserId) return;
-        setAdminDisabling2fa(true);
-        try {
-            await api.delete(`/auth/totp/admin/${adminPwUserId}`);
-            setAdminPwMsg({ text: 'Two-factor authentication disabled for user.', type: 'success' });
-            fetchAllUsers();
-        } catch (err: unknown) {
-            const detail = (err as ApiError)?.response?.data?.detail;
-            setAdminPwMsg({ text: typeof detail === 'string' ? detail : 'Failed to disable 2FA.', type: 'error' });
-        } finally {
-            setAdminDisabling2fa(false);
-            setTimeout(() => setAdminPwMsg(null), 4000);
-        }
-    };
-
-    const selectedUser = allUsers.find(u => u.id === adminPwUserId);
 
     if (loading) {
         return (
@@ -339,62 +269,6 @@ export function Settings() {
             <TOTPSetupModal open={totpSetupOpen} onClose={() => setTotpSetupOpen(false)} onEnabled={handleTotpEnabled} />
             <TOTPDisableModal open={totpDisableOpen} onClose={() => setTotpDisableOpen(false)} onDisabled={handleTotpDisabled} />
             <BackupCodesModal open={backupCodesOpen} onClose={() => setBackupCodesOpen(false)} />
-
-            {/* Admin: Change Any User's Password (Superuser Only) */}
-            {user?.is_superuser && (
-                <div className="glass-panel p-6 rounded-xl space-y-4">
-                    <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
-                        <Lock className="h-6 w-6 text-brand-500" />
-                        <div>
-                            <h2 className="text-xl font-bold text-white">Change User Password</h2>
-                            <p className="text-sm text-gray-400">Reset the password for any user account.</p>
-                        </div>
-                    </div>
-                    {adminPwMsg && (
-                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${adminPwMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                            {adminPwMsg.type === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
-                            {adminPwMsg.text}
-                        </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Select User</label>
-                            <Select
-                                value={adminPwUserId}
-                                onChange={setAdminPwUserId}
-                                options={allUsers.map((u: UserOption) => ({
-                                    value: u.id,
-                                    label: u.full_name ? `${u.full_name} (${u.email})` : u.email
-                                }))}
-                                placeholder="-- Select a user --"
-                                className="w-full"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
-                            <input type="password" value={adminPw.next} onChange={e => setAdminPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
-                            <input type="password" value={adminPw.confirm} onChange={e => setAdminPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex justify-end gap-3">
-                        {selectedUser?.totp_enabled && (
-                            <button
-                                onClick={handleAdminDisable2fa}
-                                disabled={adminDisabling2fa}
-                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {adminDisabling2fa ? 'Disabling...' : <><ShieldOff className="mr-2 h-4 w-4" />Disable 2FA</>}
-                            </button>
-                        )}
-                        <button onClick={handleAdminPwChange} disabled={adminPwSaving} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
-                            {adminPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Set Password</>}
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* Desktop Connection Settings (Electron only) */}
             {window.electronAPI && (
