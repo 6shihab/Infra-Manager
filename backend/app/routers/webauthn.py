@@ -311,7 +311,10 @@ def authentication_options(
     body: schemas.WebAuthnAuthenticationOptionsRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    allow_credentials = None
+    # Look up credentials: by email if provided, otherwise all credentials.
+    # Populating allowCredentials avoids the browser's discoverable-credential
+    # picker and goes straight to the biometric/PIN prompt.
+    creds = []
     if body and body.email:
         user = db.query(models.User).filter(models.User.email == body.email).first()
         if user:
@@ -320,21 +323,27 @@ def authentication_options(
                 .filter(models.WebAuthnCredential.user_id == user.id)
                 .all()
             )
-            if creds:
-                allow_credentials = []
-                for cred in creds:
-                    transports = []
-                    if cred.transports:
-                        for t in cred.transports:
-                            enum_val = _transport_str_to_enum(t)
-                            if enum_val:
-                                transports.append(enum_val)
-                    allow_credentials.append(
-                        PublicKeyCredentialDescriptor(
-                            id=base64url_to_bytes(cred.credential_id),
-                            transports=transports if transports else None,
-                        )
-                    )
+    if not creds:
+        # No email or no credentials for that email — load all credentials
+        # so the browser can match locally without showing a picker.
+        creds = db.query(models.WebAuthnCredential).all()
+
+    allow_credentials = None
+    if creds:
+        allow_credentials = []
+        for cred in creds:
+            transports = []
+            if cred.transports:
+                for t in cred.transports:
+                    enum_val = _transport_str_to_enum(t)
+                    if enum_val:
+                        transports.append(enum_val)
+            allow_credentials.append(
+                PublicKeyCredentialDescriptor(
+                    id=base64url_to_bytes(cred.credential_id),
+                    transports=transports if transports else None,
+                )
+            )
 
     options = webauthn.generate_authentication_options(
         rp_id=settings.webauthn_rp_id,
@@ -404,16 +413,18 @@ def authentication_verify(
         )
 
     try:
+        expected_origins = _get_expected_origins()
+        logger.info("WebAuthn verify: expected_origins=%s, rp_id=%s", expected_origins, settings.webauthn_rp_id)
         verification = webauthn.verify_authentication_response(
             credential=credential_data,
             expected_challenge=challenge_bytes,
             expected_rp_id=settings.webauthn_rp_id,
-            expected_origin=_get_expected_origins(),
+            expected_origin=expected_origins,
             credential_public_key=base64url_to_bytes(stored_cred.public_key),
             credential_current_sign_count=stored_cred.sign_count,
         )
     except Exception as e:
-        logger.warning("WebAuthn authentication verification failed: %s", e)
+        logger.error("WebAuthn authentication verification failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Passkey verification failed.",

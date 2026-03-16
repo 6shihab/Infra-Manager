@@ -9,6 +9,8 @@ import {
   nativeImage,
 } from 'electron';
 import * as path from 'path';
+import * as http from 'http';
+import * as fs from 'fs';
 import { readConfig, writeConfig } from './config';
 import { registerOfflineIpcHandlers, setMainWindow, setSyncEngine } from './ipc/index';
 import { getDb, startAutoSave, closeDb } from './db/index';
@@ -24,6 +26,113 @@ let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let syncEngine: SyncEngine | null = null;
+let localServer: http.Server | null = null;
+let localServerPort = 0;
+
+// ── Local static server for renderer ─────────────────────────────────────────
+// Serves the frontend via http://localhost:<port> instead of file:// so that
+// WebAuthn (passkeys) works — the RP ID "localhost" must match the page origin.
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.mjs':  'application/javascript',
+  '.css':  'text/css',
+  '.json': 'application/json',
+  '.png':  'image/png',
+  '.jpg':  'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif':  'image/gif',
+  '.svg':  'image/svg+xml',
+  '.ico':  'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2':'font/woff2',
+  '.ttf':  'font/ttf',
+  '.eot':  'application/vnd.ms-fontobject',
+  '.map':  'application/json',
+  '.wasm': 'application/wasm',
+};
+
+function startLocalServer(rootDir: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    localServer = http.createServer((req, res) => {
+      // Strip query string and hash
+      let urlPath = (req.url || '/').split('?')[0].split('#')[0];
+      if (urlPath === '/') urlPath = '/index.html';
+
+      // Prevent path traversal
+      const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
+      const filePath = path.join(rootDir, safePath);
+
+      // Ensure the resolved path stays within rootDir
+      if (!filePath.startsWith(rootDir)) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          // SPA fallback: serve index.html for any missing path (hash router
+          // doesn't need this, but it's a safe fallback)
+          const indexPath = path.join(rootDir, 'index.html');
+          fs.readFile(indexPath, (err2, indexData) => {
+            if (err2) {
+              res.writeHead(404);
+              res.end('Not Found');
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(indexData);
+          });
+          return;
+        }
+
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
+      });
+    });
+
+    // Listen on a fixed port on localhost only. A fixed port lets the backend
+    // include http://127.0.0.1:17170 in its WebAuthn expected_origin list.
+    // If the port is taken, fall back to port 0 (OS-assigned).
+    const PREFERRED_PORT = 17170;
+    // Bind to localhost (not 127.0.0.1) — WebAuthn requires RP ID to match a
+    // registrable domain. "localhost" is special-cased by browsers for WebAuthn,
+    // but the IP address 127.0.0.1 is NOT treated as equivalent.
+    localServer.listen(PREFERRED_PORT, 'localhost', () => {
+      const addr = localServer!.address();
+      if (addr && typeof addr === 'object') {
+        localServerPort = addr.port;
+        console.log(`Local renderer server on http://localhost:${localServerPort}`);
+        resolve(localServerPort);
+      } else {
+        reject(new Error('Failed to get local server address'));
+      }
+    });
+
+    localServer.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        // Preferred port is taken — fall back to a random port
+        console.warn(`Port ${PREFERRED_PORT} in use, falling back to random port`);
+        localServer!.listen(0, 'localhost', () => {
+          const addr = localServer!.address();
+          if (addr && typeof addr === 'object') {
+            localServerPort = addr.port;
+            console.log(`Local renderer server on http://localhost:${localServerPort}`);
+            resolve(localServerPort);
+          } else {
+            reject(new Error('Failed to get local server address'));
+          }
+        });
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
 
 // ── Window creation ─────────────────────────────────────────────────────────
 
@@ -57,15 +166,8 @@ function createWindow(): void {
     }
   });
 
-  // Inject custom Origin header so FastAPI CORS allows requests from file://
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    const headers = { ...details.requestHeaders };
-    // Only inject for requests to the configured backend (avoid overriding other origins)
-    if (!details.url.startsWith('file://')) {
-      headers['Origin'] = 'app://infra-manager';
-    }
-    callback({ requestHeaders: headers });
-  });
+  // No Origin header injection needed — the renderer loads from
+  // http://localhost:17170 which is in ALLOWED_ORIGINS and WEBAUTHN_ORIGIN.
 
   // Apply Content-Security-Policy
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -92,13 +194,21 @@ function createWindow(): void {
 function loadRenderer(): void {
   if (!win) return;
 
-  const rendererPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'renderer', 'index.html')
-    : path.join(__dirname, '../../frontend/dist/index.html');
+  if (localServerPort > 0) {
+    // Load from local HTTP server so WebAuthn gets a proper localhost origin
+    win.loadURL(`http://localhost:${localServerPort}/`).catch((err) => {
+      console.error('Failed to load renderer from local server:', err);
+    });
+  } else {
+    // Fallback to file:// (should not happen in normal flow)
+    const rendererPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'renderer', 'index.html')
+      : path.join(__dirname, '../../frontend/dist/index.html');
 
-  win.loadFile(rendererPath).catch((err) => {
-    console.error('Failed to load renderer:', err);
-  });
+    win.loadFile(rendererPath).catch((err) => {
+      console.error('Failed to load renderer:', err);
+    });
+  }
 }
 
 // ── System tray ──────────────────────────────────────────────────────────────
@@ -200,6 +310,18 @@ app.whenReady().then(async () => {
   await getDb();
   startAutoSave();
 
+  // Start local HTTP server to serve the frontend on localhost.
+  // This gives the renderer a proper http://localhost origin so WebAuthn
+  // (passkeys) works with rp_id "localhost".
+  const rendererDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'renderer')
+    : path.join(__dirname, '../../frontend/dist');
+  try {
+    await startLocalServer(rendererDir);
+  } catch (err) {
+    console.error('Failed to start local renderer server:', err);
+  }
+
   createWindow();
   if (win) setMainWindow(win);
   createTray();
@@ -214,6 +336,7 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   isQuitting = true;
   if (syncEngine) syncEngine.stop();
+  if (localServer) localServer.close();
   closeDb();
 });
 
