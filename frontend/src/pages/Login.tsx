@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
@@ -20,6 +20,8 @@ export function Login() {
 
     // Passkey state
     const [passkeyLoading, setPasskeyLoading] = useState(false);
+    const [autoPasskeyInProgress, setAutoPasskeyInProgress] = useState(false);
+    const autoPasskeyAttempted = useRef(false);
     const isPasskeyAvailable = typeof window !== 'undefined' && !!window.PublicKeyCredential;
 
     const { login, token } = useAuth();
@@ -31,6 +33,32 @@ export function Login() {
             navigate('/');
         }
     }, [token, navigate]);
+
+    // Auto-prompt passkey on mount if any passkeys are registered
+    useEffect(() => {
+        if (autoPasskeyAttempted.current || !isPasskeyAvailable || !isOnline || token) return;
+        autoPasskeyAttempted.current = true;
+
+        (async () => {
+            setAutoPasskeyInProgress(true);
+            try {
+                const optionsRes = await api.post('/auth/webauthn/login/options');
+                const options = optionsRes.data.options;
+
+                // Only auto-prompt if passkeys actually exist
+                if (!options.allowCredentials || options.allowCredentials.length === 0) return;
+
+                const credential = await startAuthentication({ optionsJSON: options });
+                const verifyRes = await api.post('/auth/webauthn/login/verify', { credential });
+                login(verifyRes.data.access_token);
+                navigate('/');
+            } catch {
+                // User cancelled or no matching credential — silently fall back to password form
+            } finally {
+                setAutoPasskeyInProgress(false);
+            }
+        })();
+    }, [isPasskeyAvailable, isOnline, token, login, navigate]);
 
     // Offline + Electron: try to use cached session
     const [offlineAttempted, setOfflineAttempted] = useState(false);
@@ -150,6 +178,22 @@ export function Login() {
             setPasskeyLoading(false);
         }
     };
+
+    if (autoPasskeyInProgress) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <div className="w-full max-w-md space-y-8 glass-panel p-8 sm:p-10 rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex flex-col items-center justify-center text-center py-8">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-brand-400 flex items-center justify-center shadow-lg shadow-brand-500/20 mb-6 animate-pulse">
+                            <Fingerprint className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-white tracking-tight">InfraManager</h2>
+                        <p className="mt-4 text-sm text-gray-400">Verifying passkey...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
