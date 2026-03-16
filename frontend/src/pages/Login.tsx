@@ -149,9 +149,7 @@ export function Login() {
         setError('');
         setPasskeyLoading(true);
         try {
-            const optionsRes = await api.post('/auth/webauthn/login/options',
-                email ? { email } : undefined
-            );
+            const optionsRes = await api.post('/auth/webauthn/login/options');
             const options = optionsRes.data.options;
 
             const credential = await startAuthentication({ optionsJSON: options });
