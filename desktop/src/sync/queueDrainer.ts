@@ -81,15 +81,23 @@ export class QueueDrainer {
             for (const entry of entries) {
                 syncQueueRepo.markSyncing(db, entry.id);
 
-                // Remap any temp IDs in endpoint and body
+                // Remap any temp IDs in endpoint and body (segment-safe replacement)
                 let endpoint = entry.endpoint;
                 let body = entry.body ? JSON.parse(entry.body) : undefined;
 
                 for (const [tempId, realId] of tempIdMap) {
-                    endpoint = endpoint.split(tempId).join(realId);
+                    // Replace only exact path segments, not substrings
+                    endpoint = endpoint.split('/').map((seg: string) => seg === tempId ? realId : seg).join('/');
                     if (body) {
-                        const bodyStr = JSON.stringify(body).split(tempId).join(realId);
-                        body = JSON.parse(bodyStr);
+                        // Replace only known ID fields in the body
+                        const ID_KEYS = ['id', 'project_id', 'server_id', 'database_engine_id', 'user_id', 'group_id'];
+                        if (typeof body === 'object' && !Array.isArray(body)) {
+                            for (const key of ID_KEYS) {
+                                if (body[key] === tempId) {
+                                    body[key] = realId;
+                                }
+                            }
+                        }
                     }
                 }
 

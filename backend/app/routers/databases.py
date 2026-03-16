@@ -177,7 +177,9 @@ def read_database(
 
 
 @router.get("/{database_id}/credentials", response_model=schemas.DatabaseCredentialsResponse)
+@limiter.limit("10/minute")
 def read_database_credentials(
+    request: Request,
     database_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),

@@ -145,6 +145,19 @@ function registerIpcHandlers(): void {
   ipcMain.handle('config:getApiUrl', () => readConfig().apiUrl);
 
   ipcMain.handle('config:setApiUrl', (_event, url: string) => {
+    // Validate URL before persisting
+    if (!url || typeof url !== 'string' || url.length > 2048) {
+      throw new Error('Invalid API URL: must be a non-empty string (max 2048 chars)');
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error('Invalid API URL: not a valid URL');
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('Invalid API URL: only http and https protocols are allowed');
+    }
     writeConfig({ apiUrl: url });
     if (syncEngine) syncEngine.updateApiUrl(url);
   });

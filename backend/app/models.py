@@ -49,19 +49,23 @@ class EncryptedJSON(TypeDecorator):
             return value
         if not isinstance(value, dict):
             return value
-            
+
+        import json
         decrypted_dict = {}
         for k, v in value.items():
-            if isinstance(v, str) and v.startswith('gAAAAAB'): # Basic check for Fernet token
+            if not isinstance(v, str):
+                # Non-string values (int, bool, float, list, None) pass through as-is
+                decrypted_dict[k] = v
+            elif v.startswith('gAAAAAB'):
+                # Fernet-encrypted token — decrypt and try to restore original type
                 decrypted_val = encryption_service.decrypt(v)
-                # Try to load it as JSON if it was a non-string initially, else keep string
                 try:
-                    import json
                     decrypted_dict[k] = json.loads(decrypted_val)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     decrypted_dict[k] = decrypted_val
             else:
-                decrypted_dict[k] = encryption_service.decrypt(v) if isinstance(v, str) else v
+                # Plain string that wasn't encrypted (edge case / legacy data)
+                decrypted_dict[k] = v
         return decrypted_dict
 
 # Cross-database JSON support (SQLite JSON vs Postgres JSONB)

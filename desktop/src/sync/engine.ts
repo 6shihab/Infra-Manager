@@ -13,7 +13,8 @@ export class SyncEngine {
     private periodicSyncInterval: NodeJS.Timeout | null = null;
     private apiUrl: string;
     private token: string;
-    private isSyncing = false;
+    /** Promise-based mutex: if non-null, a sync operation is in progress */
+    private syncInProgress: Promise<void> | null = null;
 
     constructor(apiUrl: string) {
         this.apiUrl = apiUrl;
@@ -104,68 +105,81 @@ export class SyncEngine {
     }
 
     private async runSync(): Promise<void> {
-        if (this.isSyncing || !this.token) return;
-        this.isSyncing = true;
+        if (this.syncInProgress || !this.token) return;
 
-        const db = await getDb();
+        const syncWork = (async () => {
+            const db = await getDb();
+            try {
+                syncLogRepo.addLog(db, 'info', 'Sync started (drain queue + full sync)');
+                saveDb();
+
+                // First: drain the queue (push local changes to server)
+                const drainResult = await this.queueDrainer.drain(db);
+
+                if (drainResult.authFailed) {
+                    syncLogRepo.addLog(db, 'error', 'Sync aborted: authentication failed');
+                    saveDb();
+                    notifyRenderer('sync:auth-required');
+                    return;
+                }
+
+                // Then: full sync (pull server state)
+                await this.fullSync.run(db);
+
+                syncLogRepo.addLog(db, 'info', 'Sync completed successfully');
+                saveDb();
+                notifyRenderer('sync:complete');
+            } catch (err: any) {
+                if (err.message === 'UNAUTHORIZED') {
+                    syncLogRepo.addLog(db, 'error', 'Sync failed: token expired');
+                    saveDb();
+                    notifyRenderer('sync:auth-required');
+                } else {
+                    syncLogRepo.addLog(db, 'error', `Sync failed: ${err.message}`);
+                    saveDb();
+                }
+            }
+        })();
+
+        this.syncInProgress = syncWork;
         try {
-            syncLogRepo.addLog(db, 'info', 'Sync started (drain queue + full sync)');
-            saveDb();
-
-            // First: drain the queue (push local changes to server)
-            const drainResult = await this.queueDrainer.drain(db);
-
-            if (drainResult.authFailed) {
-                syncLogRepo.addLog(db, 'error', 'Sync aborted: authentication failed');
-                saveDb();
-                notifyRenderer('sync:auth-required');
-                return;
-            }
-
-            // Then: full sync (pull server state)
-            await this.fullSync.run(db);
-
-            syncLogRepo.addLog(db, 'info', 'Sync completed successfully');
-            saveDb();
-            notifyRenderer('sync:complete');
-        } catch (err: any) {
-            if (err.message === 'UNAUTHORIZED') {
-                syncLogRepo.addLog(db, 'error', 'Sync failed: token expired');
-                saveDb();
-                notifyRenderer('sync:auth-required');
-            } else {
-                syncLogRepo.addLog(db, 'error', `Sync failed: ${err.message}`);
-                saveDb();
-            }
+            await syncWork;
         } finally {
-            this.isSyncing = false;
+            this.syncInProgress = null;
         }
     }
 
     private async runFullSync(): Promise<void> {
-        if (this.isSyncing || !this.token) return;
-        this.isSyncing = true;
-        const db = await getDb();
-        try {
-            syncLogRepo.addLog(db, 'info', 'Full sync started');
-            saveDb();
+        if (this.syncInProgress || !this.token) return;
 
-            await this.fullSync.run(db);
+        const syncWork = (async () => {
+            const db = await getDb();
+            try {
+                syncLogRepo.addLog(db, 'info', 'Full sync started');
+                saveDb();
 
-            syncLogRepo.addLog(db, 'info', 'Full sync completed');
-            saveDb();
-            notifyRenderer('sync:complete');
-        } catch (err: any) {
-            if (err.message === 'UNAUTHORIZED') {
-                syncLogRepo.addLog(db, 'error', 'Full sync failed: token expired');
+                await this.fullSync.run(db);
+
+                syncLogRepo.addLog(db, 'info', 'Full sync completed');
                 saveDb();
-                notifyRenderer('sync:auth-required');
-            } else {
-                syncLogRepo.addLog(db, 'error', `Full sync failed: ${err.message}`);
-                saveDb();
+                notifyRenderer('sync:complete');
+            } catch (err: any) {
+                if (err.message === 'UNAUTHORIZED') {
+                    syncLogRepo.addLog(db, 'error', 'Full sync failed: token expired');
+                    saveDb();
+                    notifyRenderer('sync:auth-required');
+                } else {
+                    syncLogRepo.addLog(db, 'error', `Full sync failed: ${err.message}`);
+                    saveDb();
+                }
             }
+        })();
+
+        this.syncInProgress = syncWork;
+        try {
+            await syncWork;
         } finally {
-            this.isSyncing = false;
+            this.syncInProgress = null;
         }
     }
 }

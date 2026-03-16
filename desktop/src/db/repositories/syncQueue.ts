@@ -67,9 +67,43 @@ export function getPendingCount(db: Database): number {
 }
 
 export function hasPendingForResource(db: Database, endpoint: string): boolean {
-    const result = db.exec("SELECT COUNT(*) FROM _sync_queue WHERE status IN ('pending', 'syncing') AND endpoint LIKE ?", ['%' + endpoint + '%']);
+    // Use exact prefix match followed by end-of-string or '/' to avoid false positives
+    // e.g. endpoint="/projects/abc" matches "/projects/abc" and "/projects/abc/servers" but NOT "/projects/abcdef"
+    const result = db.exec(
+        "SELECT COUNT(*) FROM _sync_queue WHERE status IN ('pending', 'syncing') AND (endpoint = ? OR endpoint LIKE ?)",
+        [endpoint, endpoint + '/%']
+    );
     if (result.length === 0 || result[0].values.length === 0) return false;
     return (result[0].values[0][0] as number) > 0;
+}
+
+/** ID-bearing keys in request bodies that should be remapped */
+const ID_KEYS = new Set([
+    'id', 'project_id', 'server_id', 'database_engine_id', 'user_id', 'group_id',
+]);
+
+/** Replace tempId with realId only in path segments (split by '/'), not substrings */
+function remapEndpointSegments(endpoint: string, tempId: string, realId: string): string {
+    return endpoint.split('/').map(seg => seg === tempId ? realId : seg).join('/');
+}
+
+/** Replace tempId with realId only in known ID fields of a parsed JSON body */
+function remapBodyIdFields(body: any, tempId: string, realId: string): any {
+    if (body === null || body === undefined) return body;
+    if (typeof body === 'string') return body === tempId ? realId : body;
+    if (Array.isArray(body)) return body.map(item => remapBodyIdFields(item, tempId, realId));
+    if (typeof body === 'object') {
+        const result: any = {};
+        for (const [k, v] of Object.entries(body)) {
+            if (ID_KEYS.has(k) && v === tempId) {
+                result[k] = realId;
+            } else {
+                result[k] = v;
+            }
+        }
+        return result;
+    }
+    return body;
 }
 
 export function remapTempId(db: Database, tempId: string, realId: string): void {
@@ -83,12 +117,24 @@ export function remapTempId(db: Database, tempId: string, realId: string): void 
         let changed = false;
 
         if (endpoint.includes(tempId)) {
-            endpoint = endpoint.replace(tempId, realId);
-            changed = true;
+            const remapped = remapEndpointSegments(endpoint, tempId, realId);
+            if (remapped !== endpoint) {
+                endpoint = remapped;
+                changed = true;
+            }
         }
         if (body && body.includes(tempId)) {
-            body = body.split(tempId).join(realId);
-            changed = true;
+            try {
+                const parsed = JSON.parse(body);
+                const remapped = remapBodyIdFields(parsed, tempId, realId);
+                const newBody = JSON.stringify(remapped);
+                if (newBody !== body) {
+                    body = newBody;
+                    changed = true;
+                }
+            } catch {
+                // If body isn't valid JSON, skip remapping to avoid corruption
+            }
         }
         if (changed) {
             db.run('UPDATE _sync_queue SET endpoint = ?, body = ? WHERE id = ?', [endpoint, body, entryId]);

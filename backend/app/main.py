@@ -1,15 +1,18 @@
 import logging
 import time
+import uuid as uuid_mod
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from app import models
-from app.database import engine
+from app.database import engine, get_db
 from app.config import settings
 from app.logging_config import setup_logging
 from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router, totp as totp_router
@@ -56,14 +59,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Use incoming X-Request-ID if present, otherwise generate one
+        request_id = request.headers.get("X-Request-ID") or str(uuid_mod.uuid4())
         start = time.perf_counter()
         response = await call_next(request)
         duration_ms = round((time.perf_counter() - start) * 1000)
         client_ip = request.client.host if request.client else "-"
         logger.info(
-            "%s %s %s %dms %s",
-            request.method, request.url.path, response.status_code, duration_ms, client_ip,
+            "[%s] %s %s %s %dms %s",
+            request_id, request.method, request.url.path, response.status_code, duration_ms, client_ip,
         )
+        response.headers["X-Request-ID"] = request_id
         return response
 
 
@@ -74,6 +80,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         return response
 
 
@@ -86,7 +95,8 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+    expose_headers=["X-Request-ID", "X-Total-Count"],
 )
 
 app.include_router(projects.router)
@@ -114,5 +124,12 @@ def read_root():
 
 
 @app.get("/health")
-def health_check():
-    return {"status": "ok"}
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "database": "disconnected"},
+        )

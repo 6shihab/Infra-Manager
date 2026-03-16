@@ -177,7 +177,9 @@ def read_server(
 
 
 @router.get("/{server_id}/credentials", response_model=schemas.ServerCredentialsResponse)
+@limiter.limit("10/minute")
 def read_server_credentials(
+    request: Request,
     server_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
