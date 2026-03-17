@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke('app:getVersion'),
 
+  isWebAuthnDegraded: (): Promise<boolean> =>
+    ipcRenderer.invoke('app:isWebAuthnDegraded'),
+
   showNativeNotification: (title: string, body: string): void =>
     ipcRenderer.send('notify:show', title, body),
 

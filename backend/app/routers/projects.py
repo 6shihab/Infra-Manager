@@ -15,9 +15,7 @@ from app.routers.databases import _can_edit_database, _can_delete_database
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-limiter = Limiter(key_func=get_remote_address)
+from app.rate_limit import limiter
 
 
 def _get_user_project_role(db: Session, user: models.User, project_id: uuid.UUID) -> str:

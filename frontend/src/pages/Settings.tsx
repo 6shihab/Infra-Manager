@@ -43,6 +43,7 @@ export function Settings() {
     const [passkeySetupOpen, setPasskeySetupOpen] = useState(false);
     const [passkeyManageOpen, setPasskeyManageOpen] = useState(false);
     const [hasPasskeys, setHasPasskeys] = useState(user?.has_passkeys ?? false);
+    const [webauthnDegraded, setWebauthnDegraded] = useState(false);
 
     useEffect(() => {
         setTotpEnabled(user?.totp_enabled ?? false);
@@ -51,6 +52,10 @@ export function Settings() {
     useEffect(() => {
         setHasPasskeys(user?.has_passkeys ?? false);
     }, [user?.has_passkeys]);
+
+    useEffect(() => {
+        window.electronAPI?.isWebAuthnDegraded().then(d => setWebauthnDegraded(d)).catch(() => {});
+    }, []);
 
     useEffect(() => {
         fetchSettings();
@@ -297,6 +302,12 @@ export function Settings() {
                     </div>
                 </div>
 
+                {webauthnDegraded && (
+                    <p className="text-[13px] text-amber-400">
+                        Passkeys are unavailable because port 17170 was occupied at startup. Restart the app to re-enable passkeys.
+                    </p>
+                )}
+
                 {hasPasskeys ? (
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
@@ -308,18 +319,18 @@ export function Settings() {
                         <div className="flex flex-wrap gap-3">
                             <button
                                 onClick={() => setPasskeyManageOpen(true)}
-                                disabled={offlineElectron}
+                                disabled={offlineElectron || webauthnDegraded}
                                 className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : undefined}
+                                title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
                             >
                                 <Fingerprint className="mr-2 h-4 w-4" />
                                 Manage Passkeys
                             </button>
                             <button
                                 onClick={() => setPasskeySetupOpen(true)}
-                                disabled={offlineElectron}
+                                disabled={offlineElectron || webauthnDegraded}
                                 className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : undefined}
+                                title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
                             >
                                 {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
                                 {offlineElectron ? 'Requires Connection' : 'Add Passkey'}
@@ -333,9 +344,9 @@ export function Settings() {
                         </p>
                         <button
                             onClick={() => setPasskeySetupOpen(true)}
-                            disabled={offlineElectron}
+                            disabled={offlineElectron || webauthnDegraded}
                             className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                            title={offlineElectron ? 'Requires connection' : undefined}
+                            title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
                         >
                             {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
                             {offlineElectron ? 'Requires Connection' : 'Set Up a Passkey'}

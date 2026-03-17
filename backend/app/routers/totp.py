@@ -16,11 +16,9 @@ from app.database import get_db
 from app.audit import log_audit
 from app.config import settings
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.rate_limit import limiter
 
 router = APIRouter(prefix="/auth/totp", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
 
 BACKUP_CODE_COUNT = 8
 

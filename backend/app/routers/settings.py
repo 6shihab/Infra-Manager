@@ -5,9 +5,7 @@ from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_active_superuser
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-limiter = Limiter(key_func=get_remote_address)
+from app.rate_limit import limiter
 
 router = APIRouter(
     prefix="/settings",

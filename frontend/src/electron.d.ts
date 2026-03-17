@@ -7,6 +7,7 @@ declare global {
       getApiUrl: () => Promise<string>;
       setApiUrl: (url: string) => Promise<void>;
       getAppVersion: () => Promise<string>;
+      isWebAuthnDegraded: () => Promise<boolean>;
       showNativeNotification: (title: string, body: string) => void;
 
       // Offline mode

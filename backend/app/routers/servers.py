@@ -12,9 +12,7 @@ from app.audit import log_audit
 
 router = APIRouter(prefix="/servers", tags=["servers"], dependencies=[Depends(get_current_user)])
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-limiter = Limiter(key_func=get_remote_address)
+from app.rate_limit import limiter
 
 
 def _can_access_server(user: models.User, server: models.Server, db: Session) -> bool:

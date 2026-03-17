@@ -6,9 +6,9 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from app.rate_limit import limiter
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app import models
@@ -53,7 +53,6 @@ _docs_kwargs = {} if settings.enable_docs else {"docs_url": None, "redoc_url": N
 app = FastAPI(title="Infra Manager API", lifespan=lifespan, **_docs_kwargs)
 
 # Setup Rate Limiting
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 

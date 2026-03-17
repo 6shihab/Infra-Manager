@@ -11,9 +11,7 @@ from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-limiter = Limiter(key_func=get_remote_address)
+from app.rate_limit import limiter
 
 @router.post("/token", response_model=schemas.Token)
 @limiter.limit("5/minute")
