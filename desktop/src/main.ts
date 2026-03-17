@@ -28,6 +28,7 @@ let isQuitting = false;
 let syncEngine: SyncEngine | null = null;
 let localServer: http.Server | null = null;
 let localServerPort = 0;
+let webauthnDegraded = false;
 
 // ── Local static server for renderer ─────────────────────────────────────────
 // Serves the frontend via http://localhost:<port> instead of file:// so that
@@ -116,12 +117,13 @@ function startLocalServer(rootDir: string): Promise<number> {
     localServer.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         // Preferred port is taken — fall back to a random port
-        console.warn(`Port ${PREFERRED_PORT} in use, falling back to random port`);
+        console.warn(`Port ${PREFERRED_PORT} in use, falling back to random port — passkeys will not work`);
         localServer!.listen(0, 'localhost', () => {
           const addr = localServer!.address();
           if (addr && typeof addr === 'object') {
             localServerPort = addr.port;
-            console.log(`Local renderer server on http://localhost:${localServerPort}`);
+            webauthnDegraded = true;
+            console.warn(`Local renderer server on http://localhost:${localServerPort} (WebAuthn degraded)`);
             resolve(localServerPort);
           } else {
             reject(new Error('Failed to get local server address'));
@@ -273,6 +275,8 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
+
+  ipcMain.handle('app:isWebAuthnDegraded', () => webauthnDegraded);
 
   ipcMain.on('notify:show', (_event, title: string, body: string) => {
     if (Notification.isSupported()) {

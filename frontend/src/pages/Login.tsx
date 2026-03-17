@@ -21,6 +21,7 @@ export function Login() {
     // Passkey state
     const [passkeyLoading, setPasskeyLoading] = useState(false);
     const [autoPasskeyInProgress, setAutoPasskeyInProgress] = useState(false);
+    const [webauthnDegraded, setWebauthnDegraded] = useState(false);
     const autoPasskeyAttempted = useRef(false);
     const isPasskeyAvailable = typeof window !== 'undefined' && !!window.PublicKeyCredential;
 
@@ -34,9 +35,14 @@ export function Login() {
         }
     }, [token, navigate]);
 
-    // Auto-prompt passkey on mount if any passkeys are registered
+    // Check if Electron's WebAuthn is degraded (port conflict at startup)
     useEffect(() => {
-        if (autoPasskeyAttempted.current || !isPasskeyAvailable || !isOnline || token) return;
+        window.electronAPI?.isWebAuthnDegraded().then(d => setWebauthnDegraded(d)).catch(() => {});
+    }, []);
+
+    // Auto-prompt passkey on mount (discoverable credential flow)
+    useEffect(() => {
+        if (autoPasskeyAttempted.current || !isPasskeyAvailable || !isOnline || token || webauthnDegraded) return;
         autoPasskeyAttempted.current = true;
 
         (async () => {
@@ -44,9 +50,6 @@ export function Login() {
             try {
                 const optionsRes = await api.post('/auth/webauthn/login/options');
                 const options = optionsRes.data.options;
-
-                // Only auto-prompt if passkeys actually exist
-                if (!options.allowCredentials || options.allowCredentials.length === 0) return;
 
                 const credential = await startAuthentication({ optionsJSON: options });
                 const verifyRes = await api.post('/auth/webauthn/login/verify', { credential });
@@ -260,7 +263,7 @@ export function Login() {
                                 {loading ? 'Signing in...' : 'Sign in'}
                             </button>
 
-                            {isPasskeyAvailable && (
+                            {isPasskeyAvailable && !webauthnDegraded && (
                                 <>
                                     <div className="flex items-center gap-3 text-gray-500 text-xs">
                                         <div className="flex-1 border-t border-dark-border" />

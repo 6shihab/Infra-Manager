@@ -10,9 +10,7 @@ from app.audit import log_audit
 
 router = APIRouter(prefix="/components", tags=["components"], dependencies=[Depends(get_current_user)])
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-limiter = Limiter(key_func=get_remote_address)
+from app.rate_limit import limiter
 
 
 def _require_editor_or_admin(user: models.User, project_id: uuid.UUID, db: Session):

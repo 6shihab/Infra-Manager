@@ -409,9 +409,6 @@ class WebAuthnCredentialResponse(BaseModel):
 class WebAuthnCredentialUpdate(BaseModel):
     device_name: str = Field(max_length=256)
 
-class WebAuthnAuthenticationOptionsRequest(BaseModel):
-    email: Optional[str] = None
-
 class WebAuthnAuthenticationOptionsResponse(BaseModel):
     options: dict
 

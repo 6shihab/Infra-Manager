@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # WebAuthn / Passkey
     webauthn_rp_id: str = "localhost"
     webauthn_rp_name: str = "InfraManager"
-    webauthn_origin: str | list[str] = ["http://localhost:5173", "http://localhost:8080", "app://infra-manager", "http://localhost:17170"]
+    webauthn_origin: str | list[str] = ["http://localhost:5173", "http://localhost:8080", "http://localhost:17170"]
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

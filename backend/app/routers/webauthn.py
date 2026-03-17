@@ -22,13 +22,12 @@ from app.database import get_db
 from app.audit import log_audit
 from app.config import settings
 
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/webauthn", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
+
 
 # ---------------------------------------------------------------------------
 # In-memory challenge store (thread-safe, 5-min TTL)
@@ -36,17 +35,27 @@ limiter = Limiter(key_func=get_remote_address)
 _challenge_store: dict[str, tuple[bytes, float]] = {}
 _challenge_lock = Lock()
 CHALLENGE_TTL = 300  # seconds
-MAX_CHALLENGES = 10_000
+MAX_CHALLENGES = 1_000
+MAX_PASSKEYS_PER_USER = 10
+
+
+def _cleanup_expired() -> None:
+    """Remove expired challenges. Must be called under _challenge_lock."""
+    now = time.time()
+    expired = [k for k, (_, exp) in _challenge_store.items() if exp < now]
+    for k in expired:
+        del _challenge_store[k]
 
 
 def _store_challenge(key: str, challenge: bytes) -> None:
     with _challenge_lock:
-        now = time.time()
+        _cleanup_expired()
         if len(_challenge_store) >= MAX_CHALLENGES:
-            expired = [k for k, (_, exp) in _challenge_store.items() if exp < now]
-            for k in expired:
-                del _challenge_store[k]
-        _challenge_store[key] = (challenge, now + CHALLENGE_TTL)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many pending authentication requests. Please try again later.",
+            )
+        _challenge_store[key] = (challenge, time.time() + CHALLENGE_TTL)
 
 
 def _pop_challenge(key: str) -> bytes | None:
@@ -98,6 +107,12 @@ def registration_options(
         .filter(models.WebAuthnCredential.user_id == current_user.id)
         .all()
     )
+
+    if len(existing_creds) >= MAX_PASSKEYS_PER_USER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum of {MAX_PASSKEYS_PER_USER} passkeys reached. Remove an existing passkey first.",
+        )
 
     exclude_credentials = []
     for cred in existing_creds:
@@ -308,47 +323,15 @@ def admin_remove_passkeys(
 @limiter.limit("10/minute")
 def authentication_options(
     request: Request,
-    body: schemas.WebAuthnAuthenticationOptionsRequest | None = None,
     db: Session = Depends(get_db),
 ):
-    # Look up credentials: by email if provided, otherwise all credentials.
-    # Populating allowCredentials avoids the browser's discoverable-credential
-    # picker and goes straight to the biometric/PIN prompt.
-    creds = []
-    if body and body.email:
-        user = db.query(models.User).filter(models.User.email == body.email).first()
-        if user:
-            creds = (
-                db.query(models.WebAuthnCredential)
-                .filter(models.WebAuthnCredential.user_id == user.id)
-                .all()
-            )
-    if not creds:
-        # No email or no credentials for that email — load all credentials
-        # so the browser can match locally without showing a picker.
-        creds = db.query(models.WebAuthnCredential).all()
-
-    allow_credentials = None
-    if creds:
-        allow_credentials = []
-        for cred in creds:
-            transports = []
-            if cred.transports:
-                for t in cred.transports:
-                    enum_val = _transport_str_to_enum(t)
-                    if enum_val:
-                        transports.append(enum_val)
-            allow_credentials.append(
-                PublicKeyCredentialDescriptor(
-                    id=base64url_to_bytes(cred.credential_id),
-                    transports=transports if transports else None,
-                )
-            )
-
+    # Discoverable credential flow: empty allowCredentials.
+    # The browser matches locally via resident keys — no server-side user
+    # lookup needed, preventing user enumeration via response size.
     options = webauthn.generate_authentication_options(
         rp_id=settings.webauthn_rp_id,
         user_verification=UserVerificationRequirement.PREFERRED,
-        allow_credentials=allow_credentials,
+        allow_credentials=None,
     )
 
     _store_challenge(f"auth:{bytes_to_base64url(options.challenge)}", options.challenge)
@@ -371,13 +354,15 @@ def authentication_verify(
     # Extract raw_id from the credential response
     raw_id_b64 = credential_data.get("rawId") or credential_data.get("id", "")
 
-    # Look up stored credential
+    # Look up stored credential (FOR UPDATE prevents sign_count race condition)
     stored_cred = (
         db.query(models.WebAuthnCredential)
         .filter(models.WebAuthnCredential.credential_id == raw_id_b64)
+        .with_for_update()
         .first()
     )
     if not stored_cred:
+        log_audit(db, None, "LOGIN_PASSKEY_FAILED", "System", f"Unrecognized credential: {raw_id_b64[:20]}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Passkey not recognized.",
@@ -385,6 +370,7 @@ def authentication_verify(
 
     user = db.query(models.User).filter(models.User.id == stored_cred.user_id).first()
     if not user or not user.is_active:
+        log_audit(db, stored_cred.user_id, "LOGIN_PASSKEY_FAILED", "System", "Inactive or missing account")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account is inactive or not found.",
@@ -407,6 +393,7 @@ def authentication_verify(
         pass
 
     if challenge_bytes is None:
+        log_audit(db, user.id, "LOGIN_PASSKEY_FAILED", "System", f"Expired/invalid challenge for {user.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication challenge expired or invalid. Please try again.",
@@ -425,6 +412,7 @@ def authentication_verify(
         )
     except Exception as e:
         logger.error("WebAuthn authentication verification failed: %s", e, exc_info=True)
+        log_audit(db, user.id, "LOGIN_PASSKEY_FAILED", "System", user.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Passkey verification failed.",
