@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import api from '../utils/api';
 import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, ShieldOff, Fingerprint } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -286,8 +286,8 @@ export function Users() {
                         </thead>
                         <tbody className="divide-y divide-dark-border">
                             {users.map((u) => (
-                                <>
-                                <tr key={u.id} className="hover:bg-white/5 transition-colors group">
+                                <Fragment key={u.id}>
+                                <tr className="hover:bg-white/5 transition-colors group">
                                     <td className="py-4 px-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             <div className="h-8 w-8 rounded-full bg-brand-900/50 flex items-center justify-center text-brand-400 font-bold mr-3 border border-brand-500/20">
@@ -369,7 +369,7 @@ export function Users() {
                                     </td>
                                 </tr>
                                 {expandedPwRow === u.id && (
-                                    <tr key={`${u.id}-pw`} className="bg-brand-900/10 border-b border-brand-500/10">
+                                    <tr className="bg-brand-900/10 border-b border-brand-500/10">
                                         <td colSpan={5} className="px-4 py-4">
                                             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
                                                 <div className="flex items-center gap-2 text-sm text-gray-400 mr-2 whitespace-nowrap self-center">
@@ -414,7 +414,7 @@ export function Users() {
                                         </td>
                                     </tr>
                                 )}
-                                </>
+                                </Fragment>
                             ))}
                             {users.length === 0 && !loading && (
                                 <tr>

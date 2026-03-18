@@ -40,7 +40,7 @@ export function ProjectDatabaseForm() {
             await api.post(`/projects/${projectId}/databases`, payload);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
             toast.success('Database Engine attached to project successfully');
             navigate(`/projects/${projectId}`);
         },

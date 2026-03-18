@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Copy, Check, ArrowRight, X } from 'lucide-react';
 import api from '../utils/api';
 
@@ -88,9 +88,11 @@ export function TOTPSetupModal({ open, onClose, onEnabled }: TOTPSetupModalProps
     };
 
     // Start setup when modal first opens
-    if (open && !qrCode && !loading && !error && step === 1) {
-        handleSetup();
-    }
+    useEffect(() => {
+        if (open && !qrCode && !loading && !error && step === 1) {
+            handleSetup();
+        }
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!open) return null;
 

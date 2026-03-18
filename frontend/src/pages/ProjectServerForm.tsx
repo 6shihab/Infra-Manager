@@ -39,7 +39,7 @@ export function ProjectServerForm() {
             await api.post(`/projects/${projectId}/servers`, payload);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
             toast.success('Server attached to project successfully');
             navigate(`/projects/${projectId}`);
         },
