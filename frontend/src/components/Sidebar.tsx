@@ -11,12 +11,17 @@ const navItems = [
     { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+    open: boolean;
+    onClose: () => void;
+}
+
+export function Sidebar({ open, onClose }: SidebarProps) {
     const location = useLocation();
     const { user, logout } = useAuth();
 
     return (
-        <aside className="w-64 flex-shrink-0 border-r border-dark-border bg-dark-card/50 backdrop-blur-xl flex flex-col h-full transition-all duration-300">
+        <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-dark-border bg-dark-card/80 backdrop-blur-xl flex flex-col h-full transition-transform duration-300 md:static md:translate-x-0 md:bg-dark-card/50 md:flex-shrink-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="h-16 flex items-center px-6 border-b border-dark-border">
                 <div className="flex items-center gap-2 text-brand-500">
                     <KeySquare className="h-6 w-6" />
@@ -33,6 +38,7 @@ export function Sidebar() {
                         <Link
                             key={item.name}
                             to={item.path}
+                            onClick={onClose}
                             className={clsx(
                                 'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
                                 isActive
@@ -56,6 +62,7 @@ export function Sidebar() {
                         <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Administration</p>
                         <Link
                             to="/audit-logs"
+                            onClick={onClose}
                             className={clsx(
                                 'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
                                 location.pathname.startsWith('/audit-logs')
@@ -68,6 +75,7 @@ export function Sidebar() {
                         </Link>
                         <Link
                             to="/users"
+                            onClick={onClose}
                             className={clsx(
                                 'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
                                 location.pathname.startsWith('/users')
@@ -80,6 +88,7 @@ export function Sidebar() {
                         </Link>
                         <Link
                             to="/groups"
+                            onClick={onClose}
                             className={clsx(
                                 'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
                                 location.pathname.startsWith('/groups')

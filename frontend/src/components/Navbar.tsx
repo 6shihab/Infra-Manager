@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, Menu } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useOffline } from '../contexts/OfflineContext';
 
-export function Navbar() {
+interface NavbarProps {
+    onMenuToggle: () => void;
+}
+
+export function Navbar({ onMenuToggle }: NavbarProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
     const { triggerSync, pendingSyncCount, isOnline } = useOffline();
@@ -35,9 +39,16 @@ export function Navbar() {
     };
 
     return (
-        <header className="h-16 border-b border-dark-border bg-dark-card/50 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
+        <header className="h-16 border-b border-dark-border bg-dark-card/50 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 sticky top-0 z-10">
             <div className="flex-1 flex items-center">
-                <div className="relative w-full max-w-md hidden md:block">
+                <button
+                    onClick={onMenuToggle}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors md:hidden mr-2 flex-shrink-0"
+                    aria-label="Toggle menu"
+                >
+                    <Menu className="h-5 w-5" />
+                </button>
+                <div className="relative w-full max-w-md">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-gray-500" />
                     </div>

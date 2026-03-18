@@ -125,7 +125,7 @@ export function AuditLogs() {
             <div className="glass-panel p-4 rounded-xl border border-dark-border">
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Search */}
-                    <div className="relative flex-1 min-w-[200px] max-w-xs">
+                    <div className="relative flex-1 min-w-0 sm:min-w-[200px] max-w-xs">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search className="h-4 w-4 text-gray-500" />
                         </div>
@@ -204,11 +204,11 @@ export function AuditLogs() {
                     <table className="min-w-full divide-y divide-dark-border">
                         <thead className="bg-black/20">
                             <tr>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-48">Timestamp</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Resource Type</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Resource Name</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Timestamp</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">User</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Resource Type</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Resource Name</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border bg-transparent">
@@ -228,31 +228,31 @@ export function AuditLogs() {
                                 </tr>
                             ) : logs.map((log) => (
                                 <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
                                         <div className="flex items-center">
-                                            <Clock className="mr-2 h-4 w-4 text-gray-500" />
+                                            <Clock className="mr-2 h-4 w-4 text-gray-500 hidden sm:block" />
                                             {formatDateTime(log.timestamp)}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                                         <div className="flex items-center text-sm text-gray-300">
                                             <User className="mr-2 h-4 w-4 text-gray-500" />
                                             {log.user ? log.user.email : <span className="text-gray-500 italic">System</span>}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                                         <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-bold rounded-md border ${getActionColor(log.action)}`}>
                                             <Activity className="mr-1.5 h-3.5 w-3.5" />
                                             {log.action}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-300 hidden md:table-cell">
                                         <div className="flex items-center">
                                             <FileText className="mr-2 h-4 w-4 text-brand-500/50" />
                                             {log.resource_type}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-400">
                                         {log.resource_name || '-'}
                                     </td>
                                 </tr>

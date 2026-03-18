@@ -7,7 +7,7 @@ export function OfflineBanner() {
     if (!window.electronAPI || isOnline) return null;
 
     return (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-4 py-2.5 text-sm flex items-center gap-3 rounded-lg mx-6 mt-4 mb-0">
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-4 py-2.5 text-sm flex items-center gap-3 rounded-lg mx-3 sm:mx-6 mt-4 mb-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23" />
                 <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />

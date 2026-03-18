@@ -20,7 +20,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', l
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-dark-bg border border-dark-border rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            <div className="bg-dark-bg border border-dark-border rounded-xl shadow-2xl max-w-md w-full p-4 sm:p-6 animate-in zoom-in-95 duration-200">
                 <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
                 <p className="text-gray-400 text-sm mb-4">{message}</p>
                 {confirmText !== undefined && (

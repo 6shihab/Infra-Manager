@@ -129,8 +129,8 @@ export function DatabaseForm() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-5">
-                    <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div className="sm:col-span-2">
                         <label className="block text-sm font-medium text-gray-300 mb-1">Host / Endpoint *</label>
                         <input required type="text"
                             value={formData.host} onChange={e => setFormData({ ...formData, host: e.target.value })}

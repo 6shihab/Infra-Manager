@@ -149,7 +149,7 @@ export function AccessControlSection({
                                     </div>
                                     <button
                                         onClick={() => onConfirmRemoveGroup({ id: pga.group_id, name: groupName })}
-                                        className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                        className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100"
                                         title="Revoke Access"
                                     >
                                         <X className="h-4 w-4" />
@@ -224,7 +224,7 @@ export function AccessControlSection({
                                     </div>
                                     <button
                                         onClick={() => onConfirmRemoveUser({ id: pua.user_id, name: userName })}
-                                        className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                        className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100"
                                         title="Revoke Access"
                                     >
                                         <X className="h-4 w-4" />

@@ -309,7 +309,7 @@ export function Login() {
                                     required
                                     value={totpCode}
                                     onChange={(e) => setTotpCode(e.target.value)}
-                                    className="w-full px-4 py-3 bg-black/40 border border-dark-border rounded-xl focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-gray-500 transition-colors text-center text-2xl tracking-[0.5em] font-mono"
+                                    className="w-full px-4 py-3 bg-black/40 border border-dark-border rounded-xl focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-gray-500 transition-colors text-center text-xl tracking-[0.3em] sm:text-2xl sm:tracking-[0.5em] font-mono"
                                     placeholder="000000"
                                     maxLength={8}
                                     autoFocus

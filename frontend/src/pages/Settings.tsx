@@ -213,7 +213,7 @@ export function Settings() {
                             {selfPwMsg.text}
                         </div>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
                             <input type="password" value={selfPw.current} onChange={e => setSelfPw(p => ({ ...p, current: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />

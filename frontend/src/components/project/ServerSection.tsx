@@ -50,13 +50,13 @@ export function ServerSection({ projectId, serverLinks, canEdit, onDeleteServer 
                     const server = link.server;
                     return (
                         <div key={link.server_id} className="glass-panel p-5 rounded-xl">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-start gap-3 group/btn">
-                                    <Server className="h-5 w-5 text-gray-400 mt-0.5" />
-                                    <div>
-                                        <h3 className="font-medium text-white group-hover/btn:text-brand-400 transition-colors flex items-center gap-2">
-                                            {server.name} ({server.ip_address})
-                                            <CopyButton text={server.ip_address} className="opacity-0 group-hover/btn:opacity-100" />
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+                                <div className="flex items-start gap-3 group/btn min-w-0">
+                                    <Server className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                        <h3 className="font-medium text-white group-hover/btn:text-brand-400 transition-colors flex items-center gap-2 flex-wrap">
+                                            <span className="break-all">{server.name} ({server.ip_address})</span>
+                                            <CopyButton text={server.ip_address} className="md:opacity-0 md:group-hover/btn:opacity-100" />
                                         </h3>
                                         <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                                             {server.os && <span className="flex items-center"><Info className="w-3 h-3 mr-1" /> {server.os}</span>}
@@ -64,7 +64,7 @@ export function ServerSection({ projectId, serverLinks, canEdit, onDeleteServer 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                     <div className={`p-2 rounded-md cursor-help ${server.is_online === true ? 'bg-emerald-500/10 text-emerald-500' : server.is_online === false ? 'bg-red-500/10 text-red-500' : 'bg-gray-500/10 text-gray-500'}`} title={server.is_online === true ? 'Status: Online' : server.is_online === false ? 'Status: Offline' : server.last_checked_at ? 'Status: Unknown' : 'Status: Pending Check'}>
                                         <Activity className={`w-4 h-4 ${(server.is_online !== null && server.is_online !== false) ? 'animate-pulse' : ''}`} />
                                     </div>

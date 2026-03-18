@@ -55,14 +55,14 @@ export function DatabaseSection({ projectId, databaseLinks, canEdit, onDeleteDat
                                     </div>
                                     <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/dbname mb-1">
                                         {link.db_name}
-                                        <CopyButton text={link.db_name} className="opacity-0 group-hover/dbname:opacity-100" />
+                                        <CopyButton text={link.db_name} className="md:opacity-0 md:group-hover/dbname:opacity-100" />
                                     </div>
                                     <div className="text-sm text-gray-400 font-mono flex items-center gap-2 group/host">
                                         {db.host}{db.port ? `:${db.port}` : ''}
-                                        <CopyButton text={db.port ? `${db.host}:${db.port}` : db.host} className="opacity-0 group-hover/host:opacity-100" />
+                                        <CopyButton text={db.port ? `${db.host}:${db.port}` : db.host} className="md:opacity-0 md:group-hover/host:opacity-100" />
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                     <div className="px-3 py-1 bg-brand-500/10 text-brand-400 rounded-lg text-sm font-medium border border-brand-500/20">
                                         {db.engine}
                                     </div>

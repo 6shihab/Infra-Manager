@@ -106,25 +106,26 @@ export function Dashboard() {
                 </div>
 
                 <div className="glass-panel rounded-xl overflow-hidden">
+                    <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-dark-border">
                         <thead className="bg-black/20">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Project</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Environment</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Servers</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Project</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Environment</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Servers</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-dark-border bg-transparent">
                             {recentProjects.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={4} className="px-3 py-8 sm:px-6 text-center text-sm text-gray-500">
                                         No projects found. <Link to="/projects/new" className="text-brand-500 hover:underline">Create your first project</Link>
                                     </td>
                                 </tr>
                             ) : recentProjects.map((project) => (
                                 <tr key={project.id} className="hover:bg-white/5 transition-colors group cursor-pointer">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             <div className="h-8 w-8 rounded-md bg-brand-500/20 text-brand-500 flex items-center justify-center mr-3 font-semibold group-hover:bg-brand-500 group-hover:text-white transition-colors">
                                                 {project.name.charAt(0).toUpperCase()}
@@ -134,7 +135,7 @@ export function Dashboard() {
                                             </Link>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${project.environment === 'Prod' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
                                             project.environment === 'Staging' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                                                 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
@@ -142,13 +143,13 @@ export function Dashboard() {
                                             {project.environment}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">
                                         <div className="flex items-center">
                                             <Server className="h-4 w-4 mr-1.5 text-gray-500" />
                                             {project.server_count ?? 0}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                                         <span className="flex items-center text-sm text-gray-300">
                                             {project.is_online === true ? (
                                                 <><span className="h-2 w-2 rounded-full mr-2 bg-emerald-500 animate-pulse"></span> Online</>
@@ -163,6 +164,7 @@ export function Dashboard() {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>

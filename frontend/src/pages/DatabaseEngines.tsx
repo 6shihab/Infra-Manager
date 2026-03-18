@@ -96,8 +96,8 @@ export function DatabaseEngines() {
                 </Link>
             </div>
 
-            <div className="flex items-center space-x-4">
-                <div className="relative flex-1 max-w-md">
+            <div className="flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 max-w-md min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-gray-500" />
                     </div>
@@ -123,7 +123,7 @@ export function DatabaseEngines() {
                         <div key={engine.id} className="group flex flex-col glass-panel rounded-xl overflow-hidden border border-dark-border hover:border-brand-500/50 transition-all duration-300">
                             <div className="p-5 flex-1 relative">
                                 {(canEdit(engine) || canDelete(engine)) && (
-                                    <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute top-4 right-4 flex space-x-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                         {canEdit(engine) && (
                                             <Link to={`/databases/${engine.id}/edit`} className="p-1.5 text-gray-400 hover:text-white bg-black/50 hover:bg-brand-500/20 rounded-lg transition-colors">
                                                 <Edit className="h-4 w-4" />

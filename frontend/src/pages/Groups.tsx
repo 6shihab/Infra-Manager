@@ -199,7 +199,7 @@ export function Groups() {
                         <div className="p-5 flex-1 relative">
                             <button
                                 onClick={() => setConfirmDelete({ id: group.id, name: group.name })}
-                                className="absolute top-4 right-4 text-gray-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                className="absolute top-4 right-4 text-gray-500 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100"
                                 title="Delete Group"
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function Groups() {
                                                 {u.full_name || u.email.split('@')[0]}
                                                 <button
                                                     onClick={() => handleRemoveUser(group.id, u.id)}
-                                                    className="ml-0.5 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover/badge:opacity-100"
+                                                    className="ml-0.5 text-gray-500 hover:text-red-400 transition-colors md:opacity-0 md:group-hover/badge:opacity-100"
                                                     title="Remove from group"
                                                 >
                                                     <X className="h-3 w-3" />

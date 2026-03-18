@@ -34,9 +34,9 @@ export function ComponentSection({ projectId, components, canEdit, canDelete, on
                 {components?.map((comp) => (
                     <div key={comp.id} className="glass-panel p-5 rounded-xl border-t-2 border-t-brand-500/50 hover:border-brand-500 transition-colors duration-300">
                         <div className="flex items-start justify-between mb-3">
-                            <div>
+                            <div className="min-w-0 flex-1 mr-2">
                                 <div className="text-xs font-semibold text-brand-400 uppercase tracking-wider mb-1">{comp.type}</div>
-                                <div className="text-lg font-bold text-white leading-tight">{comp.name}</div>
+                                <div className="text-lg font-bold text-white leading-tight truncate">{comp.name}</div>
                             </div>
                             <div className="flex gap-2">
                                 {canEdit && (
