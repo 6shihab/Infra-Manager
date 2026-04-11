@@ -285,6 +285,31 @@ class ProjectDatabaseResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# --- Project Folder Schemas ---
+class ProjectFolderCreate(BaseModel):
+    name: str = Field(..., max_length=200)
+    color: Optional[str] = Field(None, max_length=7)
+    position: int = 0
+    parent_id: Optional[uuid.UUID] = None
+
+class ProjectFolderUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=200)
+    color: Optional[str] = Field(None, max_length=7)
+    position: Optional[int] = None
+    parent_id: Optional[uuid.UUID] = None
+
+class ProjectFolderResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    color: Optional[str] = None
+    position: int = 0
+    parent_id: Optional[uuid.UUID] = None
+    children: List['ProjectFolderResponse'] = []
+    class Config:
+        from_attributes = True
+
+ProjectFolderResponse.model_rebuild()
+
 class ProjectListResponse(BaseModel):
     id: uuid.UUID
     name: str
@@ -294,6 +319,7 @@ class ProjectListResponse(BaseModel):
     is_online: Optional[bool] = None
     last_checked_at: Optional[datetime] = None
     created_by: Optional[uuid.UUID] = None
+    folder_id: Optional[uuid.UUID] = None
     server_count: int = 0
     database_count: int = 0
     class Config:
@@ -306,6 +332,7 @@ class ProjectBase(BaseModel):
     primary_domain: Optional[str] = None
     environment: EnvironmentEnum = EnvironmentEnum.dev
     deployment_note: Optional[str] = None
+    folder_id: Optional[uuid.UUID] = None
 
 class ProjectCreate(ProjectBase):
     pass
@@ -316,6 +343,7 @@ class ProjectUpdate(BaseModel):
     primary_domain: Optional[str] = None
     environment: Optional[EnvironmentEnum] = None
     deployment_note: Optional[str] = None
+    folder_id: Optional[uuid.UUID] = None
 
 class ProjectResponse(ProjectBase):
     id: uuid.UUID

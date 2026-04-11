@@ -3,6 +3,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { saveDb } from '../db/index';
 import * as projectsRepo from '../db/repositories/projects';
+import * as projectFoldersRepo from '../db/repositories/projectFolders';
 import * as serversRepo from '../db/repositories/servers';
 import * as databasesRepo from '../db/repositories/databases';
 import * as componentsRepo from '../db/repositories/components';
@@ -98,6 +99,20 @@ export class FullSync {
             }
             syncLogRepo.addLog(db, 'info', `Synced ${projectCount} projects`);
             saveDb();
+
+            // 2b. Sync project folders
+            try {
+                syncLogRepo.addLog(db, 'info', 'Syncing project folders...');
+                const folders: any[] = await httpGet(this.apiUrl, '/project-folders/flat', this.token);
+                for (const f of folders) {
+                    projectFoldersRepo.upsertFolder(db, f);
+                }
+                syncLogRepo.addLog(db, 'info', `Synced ${folders.length} project folders`);
+                saveDb();
+            } catch (err: any) {
+                if (err.message === 'UNAUTHORIZED') throw err;
+                syncLogRepo.addLog(db, 'warn', `Failed to sync project folders: ${err.message}`);
+            }
 
             // 3. Sync each project's details
             for (const p of projects) {

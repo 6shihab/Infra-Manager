@@ -1,5 +1,6 @@
 import { Database } from 'sql.js';
 import * as projectsRepo from '../db/repositories/projects';
+import * as projectFoldersRepo from '../db/repositories/projectFolders';
 import * as serversRepo from '../db/repositories/servers';
 import * as databasesRepo from '../db/repositories/databases';
 import * as componentsRepo from '../db/repositories/components';
@@ -138,6 +139,57 @@ export function offlineApiDispatcher(db: Database, request: OfflineRequest): Off
                 },
                 status: 200,
             };
+        }
+
+        // ===== PROJECT FOLDERS =====
+        if (m === 'GET' && matchRoute(endpoint, '/project-folders/flat')) {
+            return { data: projectFoldersRepo.listFolders(db), status: 200 };
+        }
+
+        if (m === 'GET' && matchRoute(endpoint, '/project-folders')) {
+            // Build tree from flat list
+            const flat = projectFoldersRepo.listFolders(db);
+            const byId: Record<string, any> = {};
+            for (const f of flat) {
+                byId[f.id] = { ...f, children: [] };
+            }
+            const roots: any[] = [];
+            for (const f of flat) {
+                const node = byId[f.id];
+                if (f.parent_id && byId[f.parent_id]) {
+                    byId[f.parent_id].children.push(node);
+                } else {
+                    roots.push(node);
+                }
+            }
+            return { data: roots, status: 200 };
+        }
+
+        if (m === 'POST' && matchRoute(endpoint, '/project-folders')) {
+            const user = getCurrentUser(db);
+            if (!user) return FORBIDDEN;
+            const created = projectFoldersRepo.createFolder(db, { ...body, created_by: user.user_id });
+            syncQueueRepo.enqueue(db, 'POST', '/project-folders/', body, created.id);
+            return { data: created, status: 201 };
+        }
+
+        params = matchRoute(endpoint, '/project-folders/:id');
+        if (params) {
+            if (m === 'PUT') {
+                const user = getCurrentUser(db);
+                if (!user) return FORBIDDEN;
+                const updated = projectFoldersRepo.updateFolder(db, params.id, body);
+                if (!updated) return { data: { detail: 'Not found' }, status: 404 };
+                syncQueueRepo.enqueue(db, 'PUT', `/project-folders/${params.id}`, body);
+                return { data: updated, status: 200 };
+            }
+            if (m === 'DELETE') {
+                const user = getCurrentUser(db);
+                if (!user) return FORBIDDEN;
+                projectFoldersRepo.softDeleteFolder(db, params.id);
+                syncQueueRepo.enqueue(db, 'DELETE', `/project-folders/${params.id}`);
+                return { data: { detail: 'Deleted' }, status: 200 };
+            }
         }
 
         // ===== PROJECTS =====

@@ -5,6 +5,7 @@ import api from '../utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { Select } from '../components/Select';
+import { useProjectFolders, flattenTree } from '../hooks/useProjectFolders';
 
 export function ProjectForm() {
     const navigate = useNavigate();
@@ -15,12 +16,15 @@ export function ProjectForm() {
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const toast = useToast();
 
+    const { data: folders = [] } = useProjectFolders();
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         primary_domain: '',
         environment: 'Dev',
-        deployment_note: ''
+        deployment_note: '',
+        folder_id: '',
     });
 
     useEffect(() => {
@@ -32,7 +36,8 @@ export function ProjectForm() {
                         description: res.data.description || '',
                         primary_domain: res.data.primary_domain || '',
                         environment: res.data.environment || 'Dev',
-                        deployment_note: res.data.deployment_note || ''
+                        deployment_note: res.data.deployment_note || '',
+                        folder_id: res.data.folder_id || '',
                     });
                 })
                 .catch(err => console.error("Failed to fetch project for editing", err))
@@ -43,13 +48,14 @@ export function ProjectForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        const payload = { ...formData, folder_id: formData.folder_id || null };
         try {
             if (isEditMode) {
-                await api.put(`/projects/${id}`, formData);
+                await api.put(`/projects/${id}`, payload);
                 queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate(`/projects/${id}`);
             } else {
-                const res = await api.post('/projects/', formData);
+                const res = await api.post('/projects/', payload);
                 queryClient.invalidateQueries({ queryKey: ['projects'] });
                 navigate(`/projects/${res.data.id}`);
             }
@@ -130,6 +136,24 @@ export function ProjectForm() {
                         />
                     </div>
                 </div>
+
+                {folders.length > 0 && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Folder</label>
+                        <Select
+                            value={formData.folder_id}
+                            onChange={(val) => setFormData({ ...formData, folder_id: val })}
+                            options={[
+                                { value: '', label: 'No Folder' },
+                                ...flattenTree(folders).map((f) => ({
+                                    value: f.id,
+                                    label: `${'\u00A0\u00A0'.repeat(f.depth)}${f.name}`,
+                                })),
+                            ]}
+                            className="w-full md:w-1/2"
+                        />
+                    </div>
+                )}
 
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Deployment Note</label>

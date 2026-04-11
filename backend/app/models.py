@@ -143,6 +143,25 @@ class ProjectUserAccess(Base):
 
 # --- Infrastructure Models ---
 
+class ProjectFolder(Base):
+    __tablename__ = "project_folders"
+
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    name = Column(String(200), nullable=False)
+    color = Column(String(7), nullable=True)  # hex like "#3B82F6"
+    position = Column(Integer, default=0)
+    parent_id = Column(PgUUID(as_uuid=True), ForeignKey("project_folders.id", ondelete="CASCADE"), nullable=True, index=True)
+    created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Soft Delete
+    is_deleted = Column(Boolean, default=False, index=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    children = relationship("ProjectFolder", back_populates="parent", cascade="all, delete-orphan")
+    parent = relationship("ProjectFolder", back_populates="children", remote_side=[id])
+    projects = relationship("Project", back_populates="folder")
+    creator = relationship("User", foreign_keys=[created_by])
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -152,6 +171,7 @@ class Project(Base):
     primary_domain = Column(String)
     environment = Column(Enum(EnvironmentEnum), default=EnvironmentEnum.dev)
     deployment_note = Column(Text, nullable=True)
+    folder_id = Column(PgUUID(as_uuid=True), ForeignKey("project_folders.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Uptime Monitoring
     is_online = Column(Boolean, nullable=True)
@@ -164,6 +184,7 @@ class Project(Base):
     # Creator tracking
     created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
+    folder = relationship("ProjectFolder", back_populates="projects")
     servers = relationship("Server", secondary="project_server", back_populates="projects")
     databases = relationship("DatabaseEngine", secondary="project_database", back_populates="projects")
     server_links = relationship("ProjectServer", back_populates="project", cascade="all, delete-orphan")

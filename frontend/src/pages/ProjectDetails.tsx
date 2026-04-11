@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { ProjectHeader } from '../components/project/ProjectHeader';
 import { DeploymentNote } from '../components/project/DeploymentNote';
+import { useProjectFoldersFlat } from '../hooks/useProjectFolders';
 import { ServerSection } from '../components/project/ServerSection';
 import { DatabaseSection } from '../components/project/DatabaseSection';
 import { ComponentSection } from '../components/project/ComponentSection';
@@ -27,6 +28,8 @@ export function ProjectDetails() {
     const [loading, setLoading] = useState(true);
 
     const { user } = useAuth();
+    const { data: foldersFlat = [] } = useProjectFoldersFlat();
+    const projectFolder = project?.folder_id ? foldersFlat.find(f => f.id === project.folder_id) : null;
     const [deleteConfig, setDeleteConfig] = useState<{ type: 'project' | 'server' | 'database' | 'component', id: string | null, title: string, name: string } | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [confirmRemoveGroup, setConfirmRemoveGroup] = useState<{ id: string; name: string } | null>(null);
@@ -197,6 +200,8 @@ export function ProjectDetails() {
 
             <ProjectHeader
                 project={project}
+                folderName={projectFolder?.name}
+                folderColor={projectFolder?.color}
                 userRole={userRole}
                 isSuperuser={!!user?.is_superuser}
                 canEdit={canEdit}

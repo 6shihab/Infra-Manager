@@ -22,8 +22,8 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:17170
-      - WEBAUTHN_ORIGIN=http://localhost:5173,http://localhost:8080,http://localhost:17170
+      - ALLOWED_ORIGINS=http://localhost:8180,http://localhost:5173,http://localhost:17170
+      - WEBAUTHN_ORIGIN=http://localhost:5173,http://localhost:8180,http://localhost:17170
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       redis:
@@ -51,7 +51,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "8080:80"
+      - "8180:80"
     depends_on:
       - backend
     deploy:

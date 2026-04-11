@@ -133,6 +133,16 @@ export interface Component {
     custom_fields: Record<string, unknown>;
 }
 
+// --- Project Folder ---
+export interface ProjectFolder {
+    id: string;
+    name: string;
+    color: string | null;
+    position: number;
+    parent_id: string | null;
+    children: ProjectFolder[];
+}
+
 // --- Project ---
 export interface ProjectListItem {
     id: string;
@@ -143,6 +153,7 @@ export interface ProjectListItem {
     is_online: boolean | null;
     last_checked_at: string | null;
     created_by: string | null;
+    folder_id: string | null;
     server_count: number;
     database_count: number;
 }
@@ -157,6 +168,7 @@ export interface Project {
     is_online: boolean | null;
     last_checked_at: string | null;
     created_by: string | null;
+    folder_id: string | null;
     server_links: ServerLink[];
     database_links: DatabaseLink[];
     components: Component[];

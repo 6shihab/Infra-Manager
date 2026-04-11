@@ -140,9 +140,9 @@ export function createProject(db: Database, data: any): any {
     const id = generateUUID();
     const now = new Date().toISOString();
     db.run(
-        `INSERT INTO projects (id, name, description, primary_domain, environment, deployment_note, is_deleted, created_by, _is_local, _local_updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, 1, ?)`,
-        [id, data.name, data.description || null, data.primary_domain || null, data.environment || 'Dev', data.deployment_note || null, data.created_by || null, now]
+        `INSERT INTO projects (id, name, description, primary_domain, environment, deployment_note, folder_id, is_deleted, created_by, _is_local, _local_updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?)`,
+        [id, data.name, data.description || null, data.primary_domain || null, data.environment || 'Dev', data.deployment_note || null, data.folder_id || null, data.created_by || null, now]
     );
     saveDb();
     return { id, ...data, is_deleted: false, _is_local: true };
@@ -152,7 +152,7 @@ export function updateProject(db: Database, id: string, data: any): any {
     const fields: string[] = [];
     const values: any[] = [];
 
-    const allowedFields = ['name', 'description', 'primary_domain', 'environment', 'deployment_note'];
+    const allowedFields = ['name', 'description', 'primary_domain', 'environment', 'deployment_note', 'folder_id'];
     for (const field of allowedFields) {
         if (data[field] !== undefined) {
             fields.push(`${field} = ?`);
@@ -179,12 +179,12 @@ export function softDeleteProject(db: Database, id: string): void {
 
 export function upsertProject(db: Database, project: any): void {
     db.run(
-        `INSERT OR REPLACE INTO projects (id, name, description, primary_domain, environment, deployment_note, is_online, last_checked_at, is_deleted, deleted_at, created_by, server_count, database_count, current_user_role, _is_local, _local_updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)`,
+        `INSERT OR REPLACE INTO projects (id, name, description, primary_domain, environment, deployment_note, folder_id, is_online, last_checked_at, is_deleted, deleted_at, created_by, server_count, database_count, current_user_role, _is_local, _local_updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)`,
         [
             project.id, project.name, project.description || null,
             project.primary_domain || null, project.environment || 'Dev',
-            project.deployment_note || null,
+            project.deployment_note || null, project.folder_id || null,
             project.is_online === true ? 1 : project.is_online === false ? 0 : null,
             project.last_checked_at || null,
             project.is_deleted ? 1 : 0, project.deleted_at || null,

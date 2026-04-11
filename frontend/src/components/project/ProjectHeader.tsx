@@ -13,6 +13,8 @@ interface ProjectHeaderProps {
         is_online: boolean | null;
         last_checked_at?: string;
     };
+    folderName?: string | null;
+    folderColor?: string | null;
     userRole: string | null;
     isSuperuser: boolean;
     canEdit: boolean;
@@ -26,7 +28,7 @@ const roleBadgeClass: Record<string, string> = {
     Viewer: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
 };
 
-export function ProjectHeader({ project, userRole, isSuperuser, canEdit, canDelete, onDeleteProject }: ProjectHeaderProps) {
+export function ProjectHeader({ project, folderName, folderColor, userRole, isSuperuser, canEdit, canDelete, onDeleteProject }: ProjectHeaderProps) {
     return (
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
@@ -38,6 +40,12 @@ export function ProjectHeader({ project, userRole, isSuperuser, canEdit, canDele
                         }`}>
                         {project.environment}
                     </span>
+                    {folderName && (
+                        <span className="px-2.5 py-0.5 inline-flex items-center gap-1.5 text-xs leading-5 font-medium rounded-full bg-white/5 text-gray-300 border border-white/10">
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: folderColor || '#6B7280' }} />
+                            {folderName}
+                        </span>
+                    )}
                     {!isSuperuser && userRole && (
                         <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${roleBadgeClass[userRole] ?? roleBadgeClass.Viewer}`}>
                             {userRole}

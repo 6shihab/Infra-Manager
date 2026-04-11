@@ -1,11 +1,11 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from starlette.responses import Response
 from datetime import datetime
 from fastapi_cache.decorator import cache
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_active_superuser, require_project_role
@@ -84,7 +84,7 @@ def create_project(request: Request, project: schemas.ProjectCreate, db: Session
     return db_project
 
 @router.get("/", response_model=List[schemas.ProjectListResponse])
-def read_projects(skip: int = 0, limit: int = 100, response: Response = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def read_projects(skip: int = 0, limit: int = 100, folder_id: Optional[str] = Query(None), response: Response = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.is_superuser:
         base_q = db.query(models.Project).filter(models.Project.is_deleted == False)
     else:
@@ -112,6 +112,13 @@ def read_projects(skip: int = 0, limit: int = 100, response: Response = None, db
                     models.Project.id.in_(direct_project_ids)
                 )
             )
+
+    # Optional folder filter
+    if folder_id is not None:
+        if folder_id == "none":
+            base_q = base_q.filter(models.Project.folder_id == None)
+        else:
+            base_q = base_q.filter(models.Project.folder_id == folder_id)
 
     total = base_q.count()
     if response:
@@ -141,7 +148,7 @@ def read_projects(skip: int = 0, limit: int = 100, response: Response = None, db
             id=p.id, name=p.name, description=p.description,
             primary_domain=p.primary_domain, environment=p.environment,
             is_online=p.is_online, last_checked_at=p.last_checked_at,
-            created_by=p.created_by,
+            created_by=p.created_by, folder_id=p.folder_id,
             server_count=server_counts.get(p.id, 0),
             database_count=db_counts.get(p.id, 0),
         )

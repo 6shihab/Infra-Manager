@@ -4,6 +4,8 @@ import { migration002 } from './migrations/002_sync_log';
 import { migration003 } from './migrations/003_idempotency_key';
 import { migration004 } from './migrations/004_add_indexes';
 import { migration005 } from './migrations/005_user_passkey_flag';
+import { migration006 } from './migrations/006_project_folders';
+import { migration007 } from './migrations/007_folder_parent_id';
 
 interface Migration {
     version: number;
@@ -17,6 +19,8 @@ const migrations: Migration[] = [
     { version: 3, name: 'idempotency_key', up: migration003 },
     { version: 4, name: 'add_indexes', up: migration004 },
     { version: 5, name: 'user_passkey_flag', up: migration005 },
+    { version: 6, name: 'project_folders', up: migration006 },
+    { version: 7, name: 'folder_parent_id', up: migration007 },
 ];
 
 export function runMigrations(db: Database): void {
