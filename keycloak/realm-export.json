@@ -1,6 +1,9 @@
 {
   "realm": "infra-manager",
   "enabled": true,
+  "loginTheme": "infra-manager",
+  "displayName": "InfraManager",
+  "displayNameHtml": "<div style=\"font-weight:700\">InfraManager</div>",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
