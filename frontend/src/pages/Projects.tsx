@@ -204,7 +204,7 @@ export function Projects() {
 
     // Projects directly in the current folder (not in subfolders)
     const currentProjects = useMemo(() => {
-        return baseFiltered.filter(p =>
+        return baseFiltered.filter((p: ProjectListItem) =>
             currentFolderId ? p.folder_id === currentFolderId : !p.folder_id
         );
     }, [baseFiltered, currentFolderId]);
@@ -212,7 +212,7 @@ export function Projects() {
     // Count projects in a folder (including all descendants) for the folder card
     const countProjectsInFolder = useCallback((folder: ProjectFolder): number => {
         const allIds = collectFolderIds(folder);
-        return baseFiltered.filter(p => p.folder_id && allIds.includes(p.folder_id)).length;
+        return baseFiltered.filter((p: ProjectListItem) => p.folder_id && allIds.includes(p.folder_id)).length;
     }, [baseFiltered]);
 
     const hasFolders = foldersFlat.length > 0;
