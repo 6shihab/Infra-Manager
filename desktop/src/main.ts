@@ -28,7 +28,7 @@ let isQuitting = false;
 let syncEngine: SyncEngine | null = null;
 let localServer: http.Server | null = null;
 let localServerPort = 0;
-let webauthnDegraded = true; // Passkey/biometric auth disabled for desktop app
+let webauthnDegraded = false; // Passkey/biometric auth handled by Keycloak (no local port dependency)
 
 // ── Local static server for renderer ─────────────────────────────────────────
 // Serves the frontend via http://localhost:<port> instead of file:// so that

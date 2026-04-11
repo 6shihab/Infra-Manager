@@ -17,6 +17,7 @@ interface AuthContextType {
     logout: () => void;
     refreshUser: () => Promise<void>;
     loading: boolean;
+    triggerKcAction: (action: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -107,8 +108,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
+    const triggerKcAction = useCallback((action: string) => {
+        oidc.signinRedirect({ extraQueryParams: { kc_action: action } });
+    }, [oidc]);
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, refreshUser, loading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, refreshUser, loading, triggerKcAction }}>
             {children}
         </AuthContext.Provider>
     );

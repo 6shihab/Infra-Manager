@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ExternalLink, WifiOff } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, WifiOff, Smartphone, Fingerprint, Trash2, Pencil, Plus, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { Select } from '../components/Select';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { ApiError } from '../types/api';
 
 interface Setting {
@@ -13,18 +14,20 @@ interface Setting {
     description: string;
 }
 
-const KEYCLOAK_URL = (window as any).__ENV__?.VITE_KEYCLOAK_URL
-    || import.meta.env.VITE_KEYCLOAK_URL
-    || 'http://localhost:9080';
+interface MfaCredential {
+    id: string;
+    type: string;
+    label: string | null;
+    created_date: number | null;
+}
 
-const KEYCLOAK_REALM = (window as any).__ENV__?.VITE_KEYCLOAK_REALM
-    || import.meta.env.VITE_KEYCLOAK_REALM
-    || 'infra-manager';
-
-const KEYCLOAK_ACCOUNT_URL = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/account`;
+interface MfaStatus {
+    totp: MfaCredential[];
+    passkeys: MfaCredential[];
+}
 
 export function Settings() {
-    const { user } = useAuth();
+    const { user, triggerKcAction } = useAuth();
     const { isOnline } = useOffline();
     const offlineElectron = !isOnline && !!window.electronAPI;
     const [settings, setSettings] = useState<Setting[]>([]);
@@ -37,9 +40,27 @@ export function Settings() {
     const [selfPwSaving, setSelfPwSaving] = useState(false);
     const [selfPwMsg, setSelfPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+    // MFA state
+    const [mfaStatus, setMfaStatus] = useState<MfaStatus | null>(null);
+    const [mfaLoading, setMfaLoading] = useState(true);
+    const [deletingCred, setDeletingCred] = useState<{ id: string; label: string } | null>(null);
+    const [editingLabel, setEditingLabel] = useState<{ id: string; label: string } | null>(null);
+
+    const fetchMfaStatus = useCallback(async () => {
+        try {
+            const res = await api.get('/mfa/credentials');
+            setMfaStatus(res.data);
+        } catch {
+            setMfaStatus({ totp: [], passkeys: [] });
+        } finally {
+            setMfaLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchSettings();
-    }, [user]);
+        fetchMfaStatus();
+    }, [user, fetchMfaStatus]);
 
     const fetchSettings = async () => {
         try {
@@ -184,45 +205,180 @@ export function Settings() {
                 </div>
             </div>
 
-            {/* Security (MFA / Account Management) — managed by Keycloak */}
-            <div className="glass-panel p-6 rounded-xl space-y-4">
-                <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
+            {/* Security — In-App MFA Management */}
+            <div className="glass-panel p-6 rounded-xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-dark-border pb-4">
                     <Shield className="h-6 w-6 text-brand-500" />
                     <div>
                         <h2 className="text-xl font-bold text-white">Security</h2>
-                        <p className="text-sm text-gray-400">Manage two-factor authentication, passkeys, and sessions.</p>
+                        <p className="text-sm text-gray-400">Manage two-factor authentication and passkeys.</p>
                     </div>
                 </div>
 
-                <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-white font-medium">Two-Factor Authentication (Required)</p>
-                    <p className="text-sm text-gray-400">
-                        All accounts require an authenticator app (TOTP) for sign-in.
-                        Manage your authenticator, passkeys, and active sessions from the Account Console.
-                    </p>
-                </div>
+                {mfaLoading ? (
+                    <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500"></div>
+                    </div>
+                ) : (
+                    <>
+                        {/* TOTP / Authenticator App */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <Smartphone className="h-5 w-5 text-brand-400" />
+                                    <h3 className="text-base font-semibold text-white">Authenticator App</h3>
+                                </div>
+                                <button
+                                    onClick={() => triggerKcAction('CONFIGURE_TOTP')}
+                                    disabled={offlineElectron}
+                                    className="inline-flex items-center px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Add Device
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">Use an authenticator app (Google Authenticator, Microsoft Authenticator) to generate one-time codes.</p>
 
-                <div className="flex gap-3">
-                    <a
-                        href={`${KEYCLOAK_ACCOUNT_URL}/#/security/signingin`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Manage MFA
-                    </a>
-                    <a
-                        href={KEYCLOAK_ACCOUNT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-4 py-2 bg-white/5 border border-dark-border hover:bg-white/10 text-gray-300 text-sm font-medium rounded-lg transition-colors"
-                    >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Account Console
-                    </a>
-                </div>
+                            {mfaStatus?.totp.length === 0 ? (
+                                <div className="text-sm text-gray-500 bg-black/20 border border-dark-border rounded-lg px-4 py-3">
+                                    No authenticator app configured.
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {mfaStatus?.totp.map(cred => (
+                                        <div key={cred.id} className="flex items-center justify-between bg-black/20 border border-dark-border rounded-lg px-4 py-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <Smartphone className="h-4 w-4 text-gray-400 shrink-0" />
+                                                {editingLabel?.id === cred.id ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editingLabel.label}
+                                                            onChange={e => setEditingLabel({ ...editingLabel, label: e.target.value })}
+                                                            className="px-2 py-1 bg-black/30 border border-brand-500 rounded text-sm text-white focus:outline-none w-40"
+                                                            autoFocus
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    api.put(`/mfa/credentials/${cred.id}/label`, { label: editingLabel.label })
+                                                                        .then(() => { fetchMfaStatus(); setEditingLabel(null); });
+                                                                } else if (e.key === 'Escape') setEditingLabel(null);
+                                                            }}
+                                                        />
+                                                        <button onClick={() => {
+                                                            api.put(`/mfa/credentials/${cred.id}/label`, { label: editingLabel.label })
+                                                                .then(() => { fetchMfaStatus(); setEditingLabel(null); });
+                                                        }} className="text-emerald-400 hover:text-emerald-300"><Check className="h-4 w-4" /></button>
+                                                        <button onClick={() => setEditingLabel(null)} className="text-gray-400 hover:text-gray-300"><X className="h-4 w-4" /></button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-white truncate">{cred.label || 'Authenticator'}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className="text-xs text-gray-500">{cred.created_date ? new Date(cred.created_date).toLocaleDateString() : ''}</span>
+                                                <button onClick={() => setEditingLabel({ id: cred.id, label: cred.label || '' })} className="p-1 text-gray-400 hover:text-white transition-colors" title="Rename">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button onClick={() => setDeletingCred({ id: cred.id, label: cred.label || 'Authenticator' })} className="p-1 text-gray-400 hover:text-red-400 transition-colors" title="Remove">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Passkeys / Biometric */}
+                        <div className="border-t border-dark-border pt-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <Fingerprint className="h-5 w-5 text-brand-400" />
+                                    <h3 className="text-base font-semibold text-white">Passkeys</h3>
+                                </div>
+                                <button
+                                    onClick={() => triggerKcAction('webauthn-register-passwordless')}
+                                    disabled={offlineElectron}
+                                    className="inline-flex items-center px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Add Passkey
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">Sign in with biometrics (fingerprint, face) or a security key — no password needed.</p>
+
+                            {mfaStatus?.passkeys.length === 0 ? (
+                                <div className="text-sm text-gray-500 bg-black/20 border border-dark-border rounded-lg px-4 py-3">
+                                    No passkeys registered.
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {mfaStatus?.passkeys.map(cred => (
+                                        <div key={cred.id} className="flex items-center justify-between bg-black/20 border border-dark-border rounded-lg px-4 py-3">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <Fingerprint className="h-4 w-4 text-gray-400 shrink-0" />
+                                                {editingLabel?.id === cred.id ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editingLabel.label}
+                                                            onChange={e => setEditingLabel({ ...editingLabel, label: e.target.value })}
+                                                            className="px-2 py-1 bg-black/30 border border-brand-500 rounded text-sm text-white focus:outline-none w-40"
+                                                            autoFocus
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') {
+                                                                    api.put(`/mfa/credentials/${cred.id}/label`, { label: editingLabel.label })
+                                                                        .then(() => { fetchMfaStatus(); setEditingLabel(null); });
+                                                                } else if (e.key === 'Escape') setEditingLabel(null);
+                                                            }}
+                                                        />
+                                                        <button onClick={() => {
+                                                            api.put(`/mfa/credentials/${cred.id}/label`, { label: editingLabel.label })
+                                                                .then(() => { fetchMfaStatus(); setEditingLabel(null); });
+                                                        }} className="text-emerald-400 hover:text-emerald-300"><Check className="h-4 w-4" /></button>
+                                                        <button onClick={() => setEditingLabel(null)} className="text-gray-400 hover:text-gray-300"><X className="h-4 w-4" /></button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-white truncate">{cred.label || 'Passkey'}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className="text-xs text-gray-500">{cred.created_date ? new Date(cred.created_date).toLocaleDateString() : ''}</span>
+                                                <button onClick={() => setEditingLabel({ id: cred.id, label: cred.label || '' })} className="p-1 text-gray-400 hover:text-white transition-colors" title="Rename">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button onClick={() => setDeletingCred({ id: cred.id, label: cred.label || 'Passkey' })} className="p-1 text-gray-400 hover:text-red-400 transition-colors" title="Remove">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
+
+            {/* Delete MFA Credential Confirmation */}
+            <ConfirmDialog
+                open={!!deletingCred}
+                title="Remove Credential"
+                message={`Are you sure you want to remove "${deletingCred?.label}"? You may lose access to your account if you remove all authentication methods.`}
+                confirmLabel="Remove"
+                onConfirm={async () => {
+                    if (!deletingCred) return;
+                    try {
+                        await api.delete(`/mfa/credentials/${deletingCred.id}`);
+                        fetchMfaStatus();
+                    } catch {
+                        setMessage({ text: 'Failed to remove credential.', type: 'error' });
+                        setTimeout(() => setMessage(null), 3000);
+                    }
+                    setDeletingCred(null);
+                }}
+                onCancel={() => setDeletingCred(null)}
+            />
 
             {/* Desktop Connection Settings (Electron only) */}
             {window.electronAPI && (

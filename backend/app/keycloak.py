@@ -204,6 +204,13 @@ class KeycloakAdmin:
             # Fallback: search by email
             keycloak_id = self.get_user_id_by_email(email) or ""
 
+        # Ensure user can access the Keycloak Account Console (MFA, passkeys)
+        if keycloak_id:
+            try:
+                self.ensure_account_console_access(keycloak_id)
+            except Exception:
+                logger.warning("Failed to assign account console roles to %s", keycloak_id)
+
         return keycloak_id
 
     def get_user_id_by_email(self, email: str) -> str | None:
@@ -272,6 +279,45 @@ class KeycloakAdmin:
             timeout=10,
         )
         resp.raise_for_status()
+
+    def ensure_account_console_access(self, user_id: str) -> None:
+        """Ensure user has manage-account + view-profile roles for Account Console access."""
+        # Find the 'account' client ID
+        resp = httpx.get(
+            f"{self._base}/clients",
+            params={"clientId": "account"},
+            headers=self._headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        clients = resp.json()
+        if not clients:
+            logger.warning("Account client not found in Keycloak")
+            return
+        account_client_uuid = clients[0]["id"]
+
+        # Get available roles for this client
+        resp = httpx.get(
+            f"{self._base}/users/{user_id}/role-mappings/clients/{account_client_uuid}/available",
+            headers=self._headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        available = resp.json()
+
+        # Filter for the roles we need
+        needed = [r for r in available if r["name"] in ("manage-account", "view-profile")]
+        if not needed:
+            return  # Already assigned
+
+        resp = httpx.post(
+            f"{self._base}/users/{user_id}/role-mappings/clients/{account_client_uuid}",
+            json=needed,
+            headers=self._headers(),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        logger.info("Assigned account console roles to user %s", user_id)
 
 
 # Module-level singleton
