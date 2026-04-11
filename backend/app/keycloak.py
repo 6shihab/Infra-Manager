@@ -116,8 +116,8 @@ def validate_keycloak_token(token: str) -> dict[str, Any]:
 
     # Verify authorized party matches our frontend client
     azp = payload.get("azp")
-    if azp and azp != settings.keycloak_frontend_client_id:
-        raise ValueError(f"Token azp '{azp}' does not match expected client")
+    if not azp or azp != settings.keycloak_frontend_client_id:
+        raise ValueError(f"Token azp '{azp}' does not match expected client '{settings.keycloak_frontend_client_id}'")
 
     return payload
 

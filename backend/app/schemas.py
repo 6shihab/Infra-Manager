@@ -316,22 +316,22 @@ class ProjectListResponse(BaseModel):
 
 # --- Project Schemas ---
 class ProjectBase(BaseModel):
-    name: str
-    description: Optional[str] = None
-    primary_domain: Optional[str] = None
+    name: str = Field(max_length=256)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    primary_domain: Optional[str] = Field(default=None, max_length=512)
     environment: EnvironmentEnum = EnvironmentEnum.dev
-    deployment_note: Optional[str] = None
+    deployment_note: Optional[str] = Field(default=None, max_length=10000)
     folder_id: Optional[uuid.UUID] = None
 
 class ProjectCreate(ProjectBase):
     pass
 
 class ProjectUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    primary_domain: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=256)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    primary_domain: Optional[str] = Field(default=None, max_length=512)
     environment: Optional[EnvironmentEnum] = None
-    deployment_note: Optional[str] = None
+    deployment_note: Optional[str] = Field(default=None, max_length=10000)
     folder_id: Optional[uuid.UUID] = None
 
 class ProjectResponse(ProjectBase):
@@ -350,16 +350,16 @@ class ProjectResponse(ProjectBase):
 
 # --- Component Schemas ---
 class ComponentBase(BaseModel):
-    name: str
-    type: str # 'S3 Bucket', 'Redis', 'DNS', etc.
+    name: str = Field(max_length=256)
+    type: str = Field(max_length=128)  # 'S3 Bucket', 'Redis', 'DNS', etc.
     custom_fields: Dict[str, Any] = {}
 
 class ComponentCreate(ComponentBase):
     project_id: uuid.UUID
 
 class ComponentUpdate(BaseModel):
-    name: Optional[str] = None
-    type: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=256)
+    type: Optional[str] = Field(default=None, max_length=128)
     custom_fields: Optional[Dict[str, Any]] = None
 
 class ComponentResponse(ComponentBase):
