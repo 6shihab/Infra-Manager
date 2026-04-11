@@ -194,20 +194,34 @@ export function Settings() {
                     </div>
                 </div>
 
-                <p className="text-sm text-gray-400">
-                    Multi-factor authentication (TOTP, passkeys) and session management are handled by the identity provider.
-                    Use the Keycloak Account Console to configure security settings for your account.
-                </p>
+                <div className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-white font-medium">Two-Factor Authentication (Required)</p>
+                    <p className="text-sm text-gray-400">
+                        All accounts require an authenticator app (TOTP) for sign-in.
+                        Manage your authenticator, passkeys, and active sessions from the Account Console.
+                    </p>
+                </div>
 
-                <a
-                    href={KEYCLOAK_ACCOUNT_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open Account Console
-                </a>
+                <div className="flex gap-3">
+                    <a
+                        href={`${KEYCLOAK_ACCOUNT_URL}/#/security/signingin`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Manage MFA
+                    </a>
+                    <a
+                        href={KEYCLOAK_ACCOUNT_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-white/5 border border-dark-border hover:bg-white/10 text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                    >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Account Console
+                    </a>
+                </div>
             </div>
 
             {/* Desktop Connection Settings (Electron only) */}
