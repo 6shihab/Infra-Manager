@@ -7,6 +7,7 @@ import { formatDateTime } from '../utils/dateUtils';
 import { Select } from '../components/Select';
 import { FolderManager } from '../components/FolderManager';
 import { useProjectFolders, useProjectFoldersFlat } from '../hooks/useProjectFolders';
+import { useAuth } from '../contexts/AuthContext';
 import type { ProjectListItem, ProjectFolder } from '../types/api';
 
 function ProjectCard({ project }: { project: ProjectListItem }) {
@@ -127,6 +128,7 @@ function Breadcrumbs({ path, onNavigate }: { path: ProjectFolder[]; onNavigate: 
 }
 
 export function Projects() {
+    const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const initialQuery = searchParams.get('q') || '';
 
@@ -185,9 +187,6 @@ export function Projects() {
     // Current folder object (null = root)
     const currentFolder = currentFolderId ? findFolder(currentFolderId) : null;
 
-    // Subfolders of the current location
-    const subfolders = currentFolder ? (currentFolder.children || []) : folderTree;
-
     // Filter projects by search + environment
     const baseFiltered = useMemo(() => {
         if (!projects) return [];
@@ -201,6 +200,15 @@ export function Projects() {
             return matchesEnv && matchesSearch;
         });
     }, [projects, searchQuery, environmentFilter]);
+
+    // Subfolders of the current location — only those containing accessible projects
+    const subfolders = useMemo(() => {
+        const raw = currentFolder ? (currentFolder.children || []) : folderTree;
+        return raw.filter((folder: ProjectFolder) => {
+            const allIds = collectFolderIds(folder);
+            return baseFiltered.some((p: ProjectListItem) => p.folder_id && allIds.includes(p.folder_id));
+        });
+    }, [currentFolder, folderTree, baseFiltered]);
 
     // Projects directly in the current folder (not in subfolders)
     const currentProjects = useMemo(() => {
@@ -273,14 +281,16 @@ export function Projects() {
                     <p className="text-sm text-gray-400 mt-1">Manage your deployed applications and infrastructure.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setFolderManagerOpen(true)}
-                        className="inline-flex items-center justify-center px-3 py-2 border border-dark-border rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
-                        title="Manage Folders"
-                    >
-                        <Settings2 className="h-4 w-4 mr-1.5" />
-                        Folders
-                    </button>
+                    {user?.is_superuser && (
+                        <button
+                            onClick={() => setFolderManagerOpen(true)}
+                            className="inline-flex items-center justify-center px-3 py-2 border border-dark-border rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
+                            title="Manage Folders"
+                        >
+                            <Settings2 className="h-4 w-4 mr-1.5" />
+                            Folders
+                        </button>
+                    )}
                     <Link to="/projects/new" className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 focus:ring-offset-dark-bg transition-colors">
                         <Plus className="-ml-1 mr-2 h-5 w-5" />
                         Add Project
