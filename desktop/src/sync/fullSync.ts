@@ -80,9 +80,8 @@ export class FullSync {
                 email: me.email,
                 full_name: me.full_name,
                 is_superuser: me.is_superuser,
-                totp_enabled: me.totp_enabled,
-                has_passkeys: me.has_passkeys ?? false,
                 token: this.token,
+                refresh_token: null,
                 cached_at: new Date().toISOString(),
             });
             usersRepo.upsertUser(db, me);

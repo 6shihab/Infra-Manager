@@ -28,7 +28,7 @@ let isQuitting = false;
 let syncEngine: SyncEngine | null = null;
 let localServer: http.Server | null = null;
 let localServerPort = 0;
-let webauthnDegraded = false; // Passkey/biometric auth handled by Keycloak (no local port dependency)
+let webauthnDegraded = true; // Passkey/biometric auth handled by Keycloak (no local port dependency)
 
 // ── Local static server for renderer ─────────────────────────────────────────
 // Serves the frontend via http://localhost:<port> instead of file:// so that
@@ -171,23 +171,30 @@ function createWindow(): void {
   // No Origin header injection needed — the renderer loads from
   // http://localhost:17170 which is in ALLOWED_ORIGINS and WEBAUTHN_ORIGIN.
 
-  // Apply Content-Security-Policy
+  // Apply Content-Security-Policy only to local renderer pages, not external pages (Keycloak)
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self';" +
-          "script-src 'self';" +
-          // Tailwind v4 uses injected <style> tags in some builds
-          "style-src 'self' 'unsafe-inline';" +
-          // Backend URL is user-configured, so allow all HTTPS/HTTP connections
-          "connect-src *;" +
-          "img-src 'self' data:;" +
-          "font-src 'self' data:;"
-        ],
-      },
-    });
+    const url = details.url || '';
+    const isLocal = url.startsWith('http://localhost:17170');
+    if (isLocal) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self';" +
+            "script-src 'self';" +
+            // Tailwind v4 uses injected <style> tags in some builds
+            "style-src 'self' 'unsafe-inline';" +
+            // Backend URL is user-configured, so allow all HTTPS/HTTP connections
+            "connect-src *;" +
+            "img-src 'self' data:;" +
+            "font-src 'self' data:;"
+          ],
+        },
+      });
+    } else {
+      // Let external pages (Keycloak login) use their own headers
+      callback({ responseHeaders: details.responseHeaders });
+    }
   });
 
   loadRenderer();
