@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Set
 from app import schemas, models
 from app.database import get_db
 from app.dependencies import get_current_user
@@ -10,6 +10,65 @@ from app.audit import log_audit
 from app.rate_limit import limiter
 
 router = APIRouter(prefix="/project-folders", tags=["project-folders"], dependencies=[Depends(get_current_user)])
+
+
+def _get_accessible_folder_ids(db: Session, user: models.User) -> Optional[Set[uuid.UUID]]:
+    """Get folder IDs the user can see. Returns None for superusers (no filtering)."""
+    if user.is_superuser:
+        return None
+
+    # 1. Folders the user created
+    created_ids = {
+        r[0] for r in db.query(models.ProjectFolder.id).filter(
+            models.ProjectFolder.created_by == user.id,
+            models.ProjectFolder.is_deleted == False,
+        ).all()
+    }
+
+    # 2. Folder IDs from projects the user can access
+    project_folder_ids: set[uuid.UUID] = set()
+
+    # Via direct user access
+    for r in db.query(models.Project.folder_id).join(
+        models.ProjectUserAccess, models.ProjectUserAccess.project_id == models.Project.id,
+    ).filter(
+        models.ProjectUserAccess.user_id == user.id,
+        models.Project.is_deleted == False, models.Project.folder_id.isnot(None),
+    ).all():
+        project_folder_ids.add(r[0])
+
+    # Via group access
+    user_group_ids = [g.id for g in user.groups]
+    if user_group_ids:
+        for r in db.query(models.Project.folder_id).join(
+            models.ProjectGroupAccess, models.ProjectGroupAccess.project_id == models.Project.id,
+        ).filter(
+            models.ProjectGroupAccess.group_id.in_(user_group_ids),
+            models.Project.is_deleted == False, models.Project.folder_id.isnot(None),
+        ).all():
+            project_folder_ids.add(r[0])
+
+    # Via project creator
+    for r in db.query(models.Project.folder_id).filter(
+        models.Project.created_by == user.id,
+        models.Project.is_deleted == False, models.Project.folder_id.isnot(None),
+    ).all():
+        project_folder_ids.add(r[0])
+
+    # 3. Walk up parent chains so ancestor folders are visible
+    all_ids = created_ids | project_folder_ids
+    folder_parents = {
+        r[0]: r[1] for r in db.query(
+            models.ProjectFolder.id, models.ProjectFolder.parent_id,
+        ).filter(models.ProjectFolder.is_deleted == False).all()
+    }
+    for fid in list(all_ids):
+        parent = folder_parents.get(fid)
+        while parent:
+            all_ids.add(parent)
+            parent = folder_parents.get(parent)
+
+    return all_ids
 
 
 def _build_tree(folders: list[models.ProjectFolder]) -> list[dict]:
@@ -34,24 +93,22 @@ def _build_tree(folders: list[models.ProjectFolder]) -> list[dict]:
 
 @router.get("/", response_model=List[schemas.ProjectFolderResponse])
 def read_folders(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    all_folders = (
-        db.query(models.ProjectFolder)
-        .filter(models.ProjectFolder.is_deleted == False)
-        .order_by(models.ProjectFolder.position, models.ProjectFolder.name)
-        .all()
-    )
+    query = db.query(models.ProjectFolder).filter(models.ProjectFolder.is_deleted == False)
+    accessible_ids = _get_accessible_folder_ids(db, current_user)
+    if accessible_ids is not None:
+        query = query.filter(models.ProjectFolder.id.in_(accessible_ids))
+    all_folders = query.order_by(models.ProjectFolder.position, models.ProjectFolder.name).all()
     return _build_tree(all_folders)
 
 
 @router.get("/flat", response_model=List[schemas.ProjectFolderResponse])
 def read_folders_flat(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """Return all folders as a flat list (used by desktop sync and dropdowns)."""
-    return (
-        db.query(models.ProjectFolder)
-        .filter(models.ProjectFolder.is_deleted == False)
-        .order_by(models.ProjectFolder.position, models.ProjectFolder.name)
-        .all()
-    )
+    """Return folders as a flat list (used by desktop sync and dropdowns)."""
+    query = db.query(models.ProjectFolder).filter(models.ProjectFolder.is_deleted == False)
+    accessible_ids = _get_accessible_folder_ids(db, current_user)
+    if accessible_ids is not None:
+        query = query.filter(models.ProjectFolder.id.in_(accessible_ids))
+    return query.order_by(models.ProjectFolder.position, models.ProjectFolder.name).all()
 
 
 @router.post("/", response_model=schemas.ProjectFolderResponse)
