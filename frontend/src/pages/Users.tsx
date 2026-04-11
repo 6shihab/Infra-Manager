@@ -1,6 +1,6 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useCallback } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, Fingerprint, Smartphone, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -13,6 +13,18 @@ interface User {
     full_name: string;
     is_active: boolean;
     is_superuser: boolean;
+}
+
+interface MfaCredential {
+    id: string;
+    type: string;
+    label: string | null;
+    created_date: number | null;
+}
+
+interface MfaStatus {
+    totp: MfaCredential[];
+    passkeys: MfaCredential[];
 }
 
 export function Users() {
@@ -36,6 +48,60 @@ export function Users() {
     const [pwForm, setPwForm] = useState({ next: '', confirm: '' });
     const [pwSaving, setPwSaving] = useState(false);
     const [pwMsg, setPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    // MFA management state
+    const [mfaUserId, setMfaUserId] = useState<string | null>(null);
+    const [mfaStatus, setMfaStatus] = useState<MfaStatus | null>(null);
+    const [mfaLoading, setMfaLoading] = useState(false);
+    const [deletingCred, setDeletingCred] = useState<{ id: string; label: string; userId: string } | null>(null);
+    const [togglingMfa, setTogglingMfa] = useState(false);
+
+    const fetchMfa = useCallback(async (userId: string) => {
+        setMfaLoading(true);
+        try {
+            const res = await api.get(`/mfa/users/${userId}/credentials`);
+            setMfaStatus(res.data);
+        } catch {
+            setMfaStatus({ totp: [], passkeys: [] });
+        } finally {
+            setMfaLoading(false);
+        }
+    }, []);
+
+    const openMfaPanel = (userId: string) => {
+        if (mfaUserId === userId) {
+            setMfaUserId(null);
+            setMfaStatus(null);
+        } else {
+            setMfaUserId(userId);
+            setExpandedPwRow(null);
+            fetchMfa(userId);
+        }
+    };
+
+    const handleDeleteCredential = async () => {
+        if (!deletingCred) return;
+        try {
+            await api.delete(`/mfa/users/${deletingCred.userId}/credentials/${deletingCred.id}`);
+            toast.success('Credential removed.');
+            fetchMfa(deletingCred.userId);
+        } catch {
+            toast.error('Failed to remove credential.');
+        }
+        setDeletingCred(null);
+    };
+
+    const handleToggleMfaRequirement = async (userId: string, require: boolean) => {
+        setTogglingMfa(true);
+        try {
+            await api.put(`/mfa/users/${userId}/require`, { require_totp: require });
+            toast.success(require ? 'MFA required on next login.' : 'MFA requirement removed.');
+        } catch {
+            toast.error('Failed to update MFA requirement.');
+        } finally {
+            setTogglingMfa(false);
+        }
+    };
 
     useEffect(() => {
         fetchUsers();
@@ -270,6 +336,14 @@ export function Users() {
                                     <td className="py-4 px-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="inline-flex items-center gap-1">
                                             <button
+                                                onClick={() => openMfaPanel(u.id)}
+                                                disabled={offlineElectron}
+                                                className={`p-2 rounded-lg transition-colors ${mfaUserId === u.id ? 'text-brand-400 bg-brand-500/10' : 'text-gray-500 hover:text-brand-400 hover:bg-brand-500/10'} disabled:opacity-30`}
+                                                title={offlineElectron ? 'Requires connection' : 'Manage MFA'}
+                                            >
+                                                <ShieldCheck className="h-4 w-4" />
+                                            </button>
+                                            <button
                                                 onClick={() => togglePwRow(u.id)}
                                                 disabled={u.id === currentUser?.id || offlineElectron}
                                                 className="text-gray-500 hover:text-brand-400 p-2 rounded-lg hover:bg-brand-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
@@ -334,6 +408,109 @@ export function Users() {
                                         </td>
                                     </tr>
                                 )}
+                                {mfaUserId === u.id && (
+                                    <tr className="bg-brand-900/10 border-b border-brand-500/10">
+                                        <td colSpan={4} className="px-4 py-4">
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                                                        <ShieldCheck className="h-4 w-4 text-brand-400" />
+                                                        MFA for <span className="text-white font-medium">{u.full_name || u.email}</span>
+                                                    </div>
+                                                    <button onClick={() => { setMfaUserId(null); setMfaStatus(null); }} className="text-gray-500 hover:text-gray-300 p-1">
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+
+                                                {mfaLoading ? (
+                                                    <div className="flex justify-center py-4">
+                                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-500"></div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {/* TOTP Devices */}
+                                                        <div>
+                                                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Authenticator Apps</h4>
+                                                            {mfaStatus?.totp.length === 0 ? (
+                                                                <p className="text-xs text-gray-500">No authenticator app configured.</p>
+                                                            ) : (
+                                                                <div className="space-y-1.5">
+                                                                    {mfaStatus?.totp.map(cred => (
+                                                                        <div key={cred.id} className="flex items-center justify-between bg-black/20 border border-dark-border rounded-lg px-3 py-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+                                                                                <span className="text-sm text-white">{cred.label || 'Authenticator'}</span>
+                                                                                <span className="text-xs text-gray-500">{cred.created_date ? new Date(cred.created_date).toLocaleDateString() : ''}</span>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => setDeletingCred({ id: cred.id, label: cred.label || 'Authenticator', userId: u.id })}
+                                                                                className="text-gray-500 hover:text-red-400 p-1 transition-colors"
+                                                                                title="Remove"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Passkeys */}
+                                                        <div>
+                                                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Passkeys</h4>
+                                                            {mfaStatus?.passkeys.length === 0 ? (
+                                                                <p className="text-xs text-gray-500">No passkeys registered.</p>
+                                                            ) : (
+                                                                <div className="space-y-1.5">
+                                                                    {mfaStatus?.passkeys.map(cred => (
+                                                                        <div key={cred.id} className="flex items-center justify-between bg-black/20 border border-dark-border rounded-lg px-3 py-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Fingerprint className="h-3.5 w-3.5 text-blue-400" />
+                                                                                <span className="text-sm text-white">{cred.label || 'Passkey'}</span>
+                                                                                <span className="text-xs text-gray-500">{cred.created_date ? new Date(cred.created_date).toLocaleDateString() : ''}</span>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => setDeletingCred({ id: cred.id, label: cred.label || 'Passkey', userId: u.id })}
+                                                                                className="text-gray-500 hover:text-red-400 p-1 transition-colors"
+                                                                                title="Remove"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Require MFA toggle */}
+                                                        <div className="flex items-center justify-between border-t border-dark-border pt-3 mt-3">
+                                                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                                                                <ShieldOff className="h-4 w-4" />
+                                                                Require MFA setup on next login
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    onClick={() => handleToggleMfaRequirement(u.id, true)}
+                                                                    disabled={togglingMfa}
+                                                                    className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-medium rounded-lg border border-emerald-500/20 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Require
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleToggleMfaRequirement(u.id, false)}
+                                                                    disabled={togglingMfa}
+                                                                    className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium rounded-lg border border-red-500/20 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
                                 </Fragment>
                             ))}
                             {users.length === 0 && !loading && (
@@ -356,6 +533,15 @@ export function Users() {
             confirmText={confirmDelete?.name}
             onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
             onCancel={() => setConfirmDelete(null)}
+        />
+
+        <ConfirmDialog
+            open={deletingCred !== null}
+            title="Remove MFA Credential"
+            message={`Remove "${deletingCred?.label}" from this user? They may lose access if no other authentication method remains.`}
+            confirmLabel="Remove"
+            onConfirm={handleDeleteCredential}
+            onCancel={() => setDeletingCred(null)}
         />
         </>
     );
