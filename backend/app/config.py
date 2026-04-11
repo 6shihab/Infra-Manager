@@ -14,7 +14,15 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     enable_docs: bool = True
 
-    # WebAuthn / Passkey
+    # Keycloak OIDC
+    keycloak_url: str = "http://localhost:9080"
+    keycloak_public_url: str = ""  # Public-facing URL for JWT issuer validation; defaults to keycloak_url
+    keycloak_realm: str = "infra-manager"
+    keycloak_client_id: str = "infra-manager-backend"
+    keycloak_client_secret: str = ""
+    keycloak_frontend_client_id: str = "infra-manager-frontend"
+
+    # WebAuthn / Passkey (legacy — managed by Keycloak now)
     webauthn_rp_id: str = "localhost"
     webauthn_rp_name: str = "InfraManager"
     webauthn_origin: str | list[str] = ["http://localhost:5173", "http://localhost:8080", "http://localhost:17170"]

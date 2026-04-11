@@ -1,4 +1,6 @@
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider as OidcAuthProvider } from 'react-oidc-context';
+import { WebStorageStateStore } from 'oidc-client-ts';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
@@ -10,8 +12,10 @@ import React, { Suspense, useState, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import api from './utils/api';
 import { installOfflineAdapter } from './utils/offlineAdapter';
+import { oidcConfig } from './oidc-config';
 
 const Login = React.lazy(() => import('./pages/Login').then(module => ({ default: module.Login })));
+const OidcCallback = React.lazy(() => import('./pages/OidcCallback').then(module => ({ default: module.OidcCallback })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const Projects = React.lazy(() => import('./pages/Projects').then(module => ({ default: module.Projects })));
 const ProjectDetails = React.lazy(() => import('./pages/ProjectDetails').then(module => ({ default: module.ProjectDetails })));
@@ -52,8 +56,15 @@ function App() {
 
   if (!ready) return <Spinner />;
 
+  // Build the OIDC config with a proper userStore
+  const finalOidcConfig = {
+    ...oidcConfig,
+    userStore: new WebStorageStateStore({ store: window.localStorage }),
+  };
+
   return (
     <OfflineProvider>
+    <OidcAuthProvider {...finalOidcConfig}>
     <AuthProvider>
       <NotificationsProvider>
       <ToastProvider>
@@ -63,6 +74,7 @@ function App() {
         <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/callback" element={<OidcCallback />} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Layout />}>
@@ -102,6 +114,7 @@ function App() {
       </ToastProvider>
       </NotificationsProvider>
     </AuthProvider>
+    </OidcAuthProvider>
     </OfflineProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react';
 import api from '../utils/api';
-import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key, ShieldOff, Fingerprint } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Trash2, Shield, AlertCircle, WifiOff, Key } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -13,8 +13,6 @@ interface User {
     full_name: string;
     is_active: boolean;
     is_superuser: boolean;
-    totp_enabled?: boolean;
-    has_passkeys?: boolean;
 }
 
 export function Users() {
@@ -38,14 +36,6 @@ export function Users() {
     const [pwForm, setPwForm] = useState({ next: '', confirm: '' });
     const [pwSaving, setPwSaving] = useState(false);
     const [pwMsg, setPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-    // Disable 2FA confirm state
-    const [confirm2faDisable, setConfirm2faDisable] = useState<{ id: string; name: string } | null>(null);
-    const [disabling2fa, setDisabling2fa] = useState(false);
-
-    // Remove passkeys confirm state
-    const [confirmPasskeyRemove, setConfirmPasskeyRemove] = useState<{ id: string; name: string } | null>(null);
-    const [removingPasskeys, setRemovingPasskeys] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -134,38 +124,6 @@ export function Users() {
             setPwMsg({ text: msg, type: 'error' });
         } finally {
             setPwSaving(false);
-        }
-    };
-
-    const handleAdminDisable2fa = async (userId: string) => {
-        setDisabling2fa(true);
-        try {
-            await api.delete(`/auth/totp/admin/${userId}`);
-            toast.success('Two-factor authentication disabled for user.');
-            setConfirm2faDisable(null);
-            fetchUsers();
-        } catch (err: unknown) {
-            const detail = (err as ApiError)?.response?.data?.detail;
-            toast.error(typeof detail === 'string' ? detail : 'Failed to disable 2FA.');
-            setConfirm2faDisable(null);
-        } finally {
-            setDisabling2fa(false);
-        }
-    };
-
-    const handleAdminRemovePasskeys = async (userId: string) => {
-        setRemovingPasskeys(true);
-        try {
-            await api.delete(`/auth/webauthn/admin/${userId}`);
-            toast.success('Passkeys removed for user.');
-            setConfirmPasskeyRemove(null);
-            fetchUsers();
-        } catch (err: unknown) {
-            const detail = (err as ApiError)?.response?.data?.detail;
-            toast.error(typeof detail === 'string' ? detail : 'Failed to remove passkeys.');
-            setConfirmPasskeyRemove(null);
-        } finally {
-            setRemovingPasskeys(false);
         }
     };
 
@@ -280,7 +238,6 @@ export function Users() {
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">2FA</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
@@ -310,23 +267,6 @@ export function Users() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="py-4 px-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            {u.totp_enabled && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                    <Shield className="w-3 h-3 mr-1" /> TOTP
-                                                </span>
-                                            )}
-                                            {u.has_passkeys && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                                                    <Fingerprint className="w-3 h-3 mr-1" /> Passkey
-                                                </span>
-                                            )}
-                                            {!u.totp_enabled && !u.has_passkeys && (
-                                                <span className="text-xs text-gray-600">—</span>
-                                            )}
-                                        </div>
-                                    </td>
                                     <td className="py-4 px-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="inline-flex items-center gap-1">
                                             <button
@@ -337,26 +277,6 @@ export function Users() {
                                             >
                                                 {offlineElectron && u.id !== currentUser?.id ? <WifiOff className="h-4 w-4" /> : <Key className="h-4 w-4" />}
                                             </button>
-                                            {u.totp_enabled && (
-                                                <button
-                                                    onClick={() => setConfirm2faDisable({ id: u.id, name: u.full_name || u.email })}
-                                                    disabled={u.id === currentUser?.id || offlineElectron}
-                                                    className="text-gray-500 hover:text-orange-400 p-2 rounded-lg hover:bg-orange-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
-                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own 2FA' : offlineElectron ? 'Requires connection' : 'Disable TOTP'}
-                                                >
-                                                    <ShieldOff className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                            {u.has_passkeys && (
-                                                <button
-                                                    onClick={() => setConfirmPasskeyRemove({ id: u.id, name: u.full_name || u.email })}
-                                                    disabled={u.id === currentUser?.id || offlineElectron}
-                                                    className="text-gray-500 hover:text-orange-400 p-2 rounded-lg hover:bg-orange-500/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
-                                                    title={u.id === currentUser?.id ? 'Use Settings to manage your own passkeys' : offlineElectron ? 'Requires connection' : 'Remove Passkeys'}
-                                                >
-                                                    <Fingerprint className="h-4 w-4" />
-                                                </button>
-                                            )}
                                             <button
                                                 onClick={() => setConfirmDelete({ id: u.id, name: u.full_name || u.email })}
                                                 disabled={u.id === currentUser?.id}
@@ -370,7 +290,7 @@ export function Users() {
                                 </tr>
                                 {expandedPwRow === u.id && (
                                     <tr className="bg-brand-900/10 border-b border-brand-500/10">
-                                        <td colSpan={5} className="px-4 py-4">
+                                        <td colSpan={4} className="px-4 py-4">
                                             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
                                                 <div className="flex items-center gap-2 text-sm text-gray-400 mr-2 whitespace-nowrap self-center">
                                                     <Key className="h-4 w-4 text-brand-400" />
@@ -418,7 +338,7 @@ export function Users() {
                             ))}
                             {users.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={5} className="py-8 text-center text-gray-500 text-sm">
+                                    <td colSpan={4} className="py-8 text-center text-gray-500 text-sm">
                                         No users found.
                                     </td>
                                 </tr>
@@ -436,26 +356,6 @@ export function Users() {
             confirmText={confirmDelete?.name}
             onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
             onCancel={() => setConfirmDelete(null)}
-        />
-
-        <ConfirmDialog
-            open={confirm2faDisable !== null}
-            title="Disable Two-Factor Authentication"
-            message={`Disable 2FA for "${confirm2faDisable?.name}"? They will be able to log in with password only until they re-enable it.`}
-            confirmLabel="Disable 2FA"
-            loading={disabling2fa}
-            onConfirm={() => confirm2faDisable && handleAdminDisable2fa(confirm2faDisable.id)}
-            onCancel={() => setConfirm2faDisable(null)}
-        />
-
-        <ConfirmDialog
-            open={confirmPasskeyRemove !== null}
-            title="Remove Passkeys"
-            message={`Remove all passkeys for "${confirmPasskeyRemove?.name}"? They will no longer be able to use passwordless sign-in.`}
-            confirmLabel="Remove Passkeys"
-            loading={removingPasskeys}
-            onConfirm={() => confirmPasskeyRemove && handleAdminRemovePasskeys(confirmPasskeyRemove.id)}
-            onCancel={() => setConfirmPasskeyRemove(null)}
         />
         </>
     );

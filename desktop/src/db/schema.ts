@@ -6,6 +6,7 @@ import { migration004 } from './migrations/004_add_indexes';
 import { migration005 } from './migrations/005_user_passkey_flag';
 import { migration006 } from './migrations/006_project_folders';
 import { migration007 } from './migrations/007_folder_parent_id';
+import { migration008 } from './migrations/008_keycloak_session';
 
 interface Migration {
     version: number;
@@ -21,6 +22,7 @@ const migrations: Migration[] = [
     { version: 5, name: 'user_passkey_flag', up: migration005 },
     { version: 6, name: 'project_folders', up: migration006 },
     { version: 7, name: 'folder_parent_id', up: migration007 },
+    { version: 8, name: 'keycloak_session', up: migration008 },
 ];
 
 export function runMigrations(db: Database): void {

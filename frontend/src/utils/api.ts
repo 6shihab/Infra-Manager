@@ -8,18 +8,7 @@ const api = axios.create({
     timeout: 15000,
 });
 
-// The interceptor ensures that the token is dynamically injected into every request
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// Note: Authorization header is now set by AuthContext when the OIDC token changes,
+// rather than reading from localStorage on every request.
 
 export default api;

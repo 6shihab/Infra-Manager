@@ -135,7 +135,6 @@ export function offlineApiDispatcher(db: Database, request: OfflineRequest): Off
                     email: session.email,
                     full_name: session.full_name,
                     is_superuser: session.is_superuser,
-                    totp_enabled: session.totp_enabled,
                 },
                 status: 200,
             };
@@ -435,16 +434,6 @@ export function offlineApiDispatcher(db: Database, request: OfflineRequest): Off
         if (endpoint.startsWith('/trash')) {
             if (m === 'GET') return { data: [], status: 200, headers: { 'x-total-count': '0' } };
             return { data: { detail: 'Trash operations require an active connection.' }, status: 403 };
-        }
-
-        // ===== WEBAUTHN / PASSKEYS (online-only) =====
-        if (endpoint.startsWith('/auth/webauthn')) {
-            return { data: { detail: 'Passkey operations require an active connection.' }, status: 403 };
-        }
-
-        // ===== TOTP (online-only) =====
-        if (endpoint.startsWith('/auth/totp')) {
-            return { data: { detail: 'Two-factor authentication operations require an active connection.' }, status: 403 };
         }
 
         // ===== AUDIT LOGS (not available offline) =====

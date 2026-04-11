@@ -15,7 +15,7 @@ from app import models
 from app.database import engine, get_db
 from app.config import settings
 from app.logging_config import setup_logging
-from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router, totp as totp_router, webauthn as webauthn_router, project_folders as project_folders_router, trash as trash_router
+from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router, project_folders as project_folders_router, trash as trash_router
 from app.monitor import start_scheduler
 from app.idempotency import IdempotencyMiddleware
 from fastapi_cache import FastAPICache
@@ -107,8 +107,6 @@ app.include_router(databases.router)
 app.include_router(settings_router.router)
 app.include_router(components.router)
 app.include_router(auth.router)
-app.include_router(totp_router.router)
-app.include_router(webauthn_router.router)
 app.include_router(users.router)
 app.include_router(groups.router)
 app.include_router(audit_router.router)

@@ -12,6 +12,58 @@ services:
           cpus: '0.5'
           memory: 256M
 
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: always
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    restart: always
+    command: start-dev --import-realm
+    ports:
+      - "${KC_PORT:-9080}:8080"
+      - "9000:9000"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      keycloak-db:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
   backend:
     build:
       context: ./backend
@@ -22,12 +74,19 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - ALLOWED_ORIGINS=http://localhost:8180,http://localhost:5173,http://localhost:17170
-      - WEBAUTHN_ORIGIN=http://localhost:5173,http://localhost:8180,http://localhost:17170
+      - ALLOWED_ORIGINS=http://localhost:8181,http://localhost:5173,http://localhost:17170
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=http://localhost:${KC_PORT:-9080}
+      - KEYCLOAK_REALM=infra-manager
+      - KEYCLOAK_CLIENT_ID=infra-manager-backend
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-change-me-in-production}
+      - KEYCLOAK_FRONTEND_CLIENT_ID=infra-manager-frontend
     depends_on:
       redis:
         condition: service_started
+      keycloak:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
@@ -51,7 +110,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "8180:80"
+      - "8181:80"
     depends_on:
       - backend
     deploy:
@@ -62,3 +121,4 @@ services:
 
 volumes:
   redis_data:
+  keycloak_db_data:

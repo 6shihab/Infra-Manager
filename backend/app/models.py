@@ -99,6 +99,7 @@ user_group_link = Table(
 class User(Base):
     __tablename__ = "users"
     id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    keycloak_id = Column(String, unique=True, nullable=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)

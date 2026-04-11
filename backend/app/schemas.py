@@ -6,14 +6,6 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    requires_totp: bool = False
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
-
 class UserBase(BaseModel):
     email: str
     full_name: Optional[str] = None
@@ -22,7 +14,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    
+
     @field_validator('password')
     @classmethod
     def validate_password_complexity(cls, v: str) -> str:
@@ -38,13 +30,10 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: uuid.UUID
-    totp_enabled: bool = False
-    has_passkeys: bool = False
     class Config:
         from_attributes = True
 
 class PasswordChange(BaseModel):
-    current_password: str
     new_password: str
 
     @field_validator('new_password')
@@ -395,53 +384,6 @@ class SettingUpdate(BaseModel):
 class SettingResponse(SettingBase):
     class Config:
         from_attributes = True
-
-# --- TOTP / 2FA Schemas ---
-class TOTPSetupResponse(BaseModel):
-    secret: str
-    qr_code: str
-    provisioning_uri: str
-
-class TOTPVerifyRequest(BaseModel):
-    code: str
-
-class TOTPActivateResponse(BaseModel):
-    backup_codes: List[str]
-
-class TOTPDisableRequest(BaseModel):
-    password: str
-    code: str
-
-class TOTPLoginRequest(BaseModel):
-    totp_token: str
-    code: str
-
-# --- WebAuthn / Passkey Schemas ---
-class WebAuthnRegistrationOptionsResponse(BaseModel):
-    options: dict
-
-class WebAuthnRegistrationVerifyRequest(BaseModel):
-    credential: dict
-    device_name: str = Field(default="My Passkey", max_length=256)
-
-class WebAuthnCredentialResponse(BaseModel):
-    id: uuid.UUID
-    credential_id: str
-    device_name: Optional[str] = None
-    created_at: datetime
-    last_used_at: Optional[datetime] = None
-    transports: Optional[List[str]] = None
-    class Config:
-        from_attributes = True
-
-class WebAuthnCredentialUpdate(BaseModel):
-    device_name: str = Field(max_length=256)
-
-class WebAuthnAuthenticationOptionsResponse(BaseModel):
-    options: dict
-
-class WebAuthnAuthenticationVerifyRequest(BaseModel):
-    credential: dict
 
 # --- Audit Schemas ---
 class AuditLogBase(BaseModel):

@@ -1,62 +1,96 @@
 import uuid
 import logging
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-import jwt
-from jwt.exceptions import InvalidTokenError
-from pydantic import ValidationError
 
 from app import models, schemas
 from app.database import get_db
 from app.config import settings
+from app.keycloak import validate_keycloak_token
 
 logger = logging.getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+# Use HTTPBearer so Swagger UI shows a Bearer token input
+_bearer_scheme = HTTPBearer(auto_error=False)
 
-def is_token_blacklisted(db: Session, jti: str) -> bool:
-    """Check if a token's jti has been explicitly revoked."""
-    return db.query(models.TokenBlocklist).filter(models.TokenBlocklist.jti == jti).first() is not None
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
+def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    """Validate a Keycloak-issued JWT and return the local User."""
+    cred_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    if credentials is None:
+        raise cred_exception
+
+    token = credentials.credentials
+
+    # Decode and validate the Keycloak token
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        if payload.get("type") == "totp_pending":
-            raise credentials_exception
-        email: str = payload.get("sub")
-        jti: str = payload.get("jti")
-        if email is None:
-            raise credentials_exception
-        token_data = schemas.TokenData(email=email)
-    except (InvalidTokenError, ValidationError):
-        raise credentials_exception
+        payload = validate_keycloak_token(token)
+    except Exception as exc:
+        logger.debug("Token validation failed: %s", exc)
+        raise cred_exception
 
-    if jti and is_token_blacklisted(db, jti):
-        logger.warning("Rejected blacklisted token jti=%s", jti)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    keycloak_sub: str | None = payload.get("sub")
+    email: str | None = payload.get("email")
 
-    user = db.query(models.User).filter(models.User.email == token_data.email).first()
+    if not keycloak_sub:
+        raise cred_exception
+
+    # Look up by keycloak_id first, then by email as fallback
+    user = db.query(models.User).filter(models.User.keycloak_id == keycloak_sub).first()
+
+    if user is None and email:
+        # Fallback: match by email and link the keycloak_id (first-login linking)
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if user:
+            user.keycloak_id = keycloak_sub
+            db.commit()
+
     if user is None:
-        raise credentials_exception
+        # Auto-provision: create a local user from Keycloak claims
+        realm_roles = payload.get("realm_access", {}).get("roles", [])
+        is_superuser = "superuser" in realm_roles
+
+        full_name_parts = []
+        if payload.get("given_name"):
+            full_name_parts.append(payload["given_name"])
+        if payload.get("family_name"):
+            full_name_parts.append(payload["family_name"])
+        full_name = " ".join(full_name_parts) or payload.get("preferred_username") or email
+
+        user = models.User(
+            keycloak_id=keycloak_sub,
+            email=email or keycloak_sub,
+            hashed_password="keycloak-managed",
+            full_name=full_name,
+            is_active=True,
+            is_superuser=is_superuser,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logger.info("Auto-provisioned user %s (keycloak_id=%s)", user.email, keycloak_sub)
+
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
+
     return user
+
 
 def get_current_active_superuser(current_user: models.User = Depends(get_current_user)):
     if not current_user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges")
     return current_user
+
 
 def get_accessible_project_ids(user: models.User, db: Session) -> set[uuid.UUID] | None:
     """Return project IDs the user can access (creator or group member). Superusers get None (= no filter)."""
@@ -137,5 +171,5 @@ def require_project_role(required_roles: list[str]):
 
         logger.warning("403 Forbidden: user=%s has no access to project=%s", current_user.id, project_id)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions for this project")
-    
+
     return role_checker

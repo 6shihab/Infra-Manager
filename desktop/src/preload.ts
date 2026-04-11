@@ -11,9 +11,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke('app:getVersion'),
 
-  isWebAuthnDegraded: (): Promise<boolean> =>
-    ipcRenderer.invoke('app:isWebAuthnDegraded'),
-
   showNativeNotification: (title: string, body: string): void =>
     ipcRenderer.send('notify:show', title, body),
 
@@ -57,8 +54,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /** Cache session after login — saves token + user to SQLite, triggers sync */
-  cacheSession: (token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean; totp_enabled: boolean }): Promise<any> =>
-    ipcRenderer.invoke('offline:cacheSession', token, user),
+  cacheSession: (token: string, user: { id: string; email: string; full_name: string; is_superuser: boolean }, refreshToken?: string): Promise<any> =>
+    ipcRenderer.invoke('offline:cacheSession', token, user, refreshToken),
 
   /** Get recent sync logs */
   getSyncLogs: (limit?: number): Promise<Array<{ id: number; timestamp: string; level: string; message: string }>> =>

@@ -1,15 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ShieldOff, KeySquare, Fingerprint, WifiOff } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, ExternalLink, WifiOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { Select } from '../components/Select';
-import { TOTPSetupModal } from '../components/TOTPSetupModal';
-import { TOTPDisableModal } from '../components/TOTPDisableModal';
-import { BackupCodesModal } from '../components/BackupCodesModal';
-import { PasskeySetupModal } from '../components/PasskeySetupModal';
-import { PasskeyManageModal } from '../components/PasskeyManageModal';
 import type { ApiError } from '../types/api';
 
 interface Setting {
@@ -18,9 +13,18 @@ interface Setting {
     description: string;
 }
 
+const KEYCLOAK_URL = (window as any).__ENV__?.VITE_KEYCLOAK_URL
+    || import.meta.env.VITE_KEYCLOAK_URL
+    || 'http://localhost:9080';
+
+const KEYCLOAK_REALM = (window as any).__ENV__?.VITE_KEYCLOAK_REALM
+    || import.meta.env.VITE_KEYCLOAK_REALM
+    || 'infra-manager';
+
+const KEYCLOAK_ACCOUNT_URL = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/account`;
 
 export function Settings() {
-    const { user, refreshUser } = useAuth();
+    const { user } = useAuth();
     const { isOnline } = useOffline();
     const offlineElectron = !isOnline && !!window.electronAPI;
     const [settings, setSettings] = useState<Setting[]>([]);
@@ -29,33 +33,9 @@ export function Settings() {
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     // Self password change state
-    const [selfPw, setSelfPw] = useState({ current: '', next: '', confirm: '' });
+    const [selfPw, setSelfPw] = useState({ next: '', confirm: '' });
     const [selfPwSaving, setSelfPwSaving] = useState(false);
     const [selfPwMsg, setSelfPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-    // TOTP state
-    const [totpSetupOpen, setTotpSetupOpen] = useState(false);
-    const [totpDisableOpen, setTotpDisableOpen] = useState(false);
-    const [backupCodesOpen, setBackupCodesOpen] = useState(false);
-    const [totpEnabled, setTotpEnabled] = useState(user?.totp_enabled ?? false);
-
-    // Passkey state
-    const [passkeySetupOpen, setPasskeySetupOpen] = useState(false);
-    const [passkeyManageOpen, setPasskeyManageOpen] = useState(false);
-    const [hasPasskeys, setHasPasskeys] = useState(user?.has_passkeys ?? false);
-    const [webauthnDegraded, setWebauthnDegraded] = useState(false);
-
-    useEffect(() => {
-        setTotpEnabled(user?.totp_enabled ?? false);
-    }, [user?.totp_enabled]);
-
-    useEffect(() => {
-        setHasPasskeys(user?.has_passkeys ?? false);
-    }, [user?.has_passkeys]);
-
-    useEffect(() => {
-        window.electronAPI?.isWebAuthnDegraded().then(d => setWebauthnDegraded(d)).catch(() => {});
-    }, []);
 
     useEffect(() => {
         fetchSettings();
@@ -81,7 +61,6 @@ export function Settings() {
         setSaving(true);
         setMessage(null);
         try {
-            // Save all settings in parallel or sequentially. We will do it sequentially to handle errors.
             for (const setting of settings) {
                 await api.put(`/settings/${setting.key}`, {
                     value: setting.value,
@@ -89,16 +68,12 @@ export function Settings() {
                 });
             }
             setMessage({ text: 'Settings saved successfully!', type: 'success' });
-
-            // Dispatch a custom event in case other components (like Sidebar) want to update their state based on Settings
             window.dispatchEvent(new Event('settings-updated'));
-
         } catch (err) {
             console.error("Failed to save settings", err);
             setMessage({ text: 'An error occurred while saving settings.', type: 'error' });
         } finally {
             setSaving(false);
-            // Clear success message after 3 seconds
             setTimeout(() => setMessage(null), 3000);
         }
     };
@@ -111,9 +86,9 @@ export function Settings() {
         setSelfPwSaving(true);
         setSelfPwMsg(null);
         try {
-            await api.put('/users/me/password', { current_password: selfPw.current, new_password: selfPw.next });
+            await api.put('/users/me/password', { new_password: selfPw.next });
             setSelfPwMsg({ text: 'Password changed successfully.', type: 'success' });
-            setSelfPw({ current: '', next: '', confirm: '' });
+            setSelfPw({ next: '', confirm: '' });
         } catch (err: unknown) {
             const detail = (err as ApiError)?.response?.data?.detail;
             let msg = 'Failed to change password.';
@@ -124,28 +99,6 @@ export function Settings() {
             setSelfPwSaving(false);
             setTimeout(() => setSelfPwMsg(null), 4000);
         }
-    };
-
-    const handleTotpEnabled = () => {
-        setTotpEnabled(true);
-        setTotpSetupOpen(false);
-        refreshUser();
-    };
-
-    const handleTotpDisabled = () => {
-        setTotpEnabled(false);
-        setTotpDisableOpen(false);
-        refreshUser();
-    };
-
-    const handlePasskeyRegistered = () => {
-        setHasPasskeys(true);
-        setPasskeySetupOpen(false);
-        refreshUser();
-    };
-
-    const handlePasskeyChanged = () => {
-        refreshUser();
     };
 
     if (loading) {
@@ -213,11 +166,7 @@ export function Settings() {
                             {selfPwMsg.text}
                         </div>
                     )}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
-                            <input type="password" value={selfPw.current} onChange={e => setSelfPw(p => ({ ...p, current: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
-                        </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
                             <input type="password" value={selfPw.next} onChange={e => setSelfPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
@@ -235,131 +184,31 @@ export function Settings() {
                 </div>
             </div>
 
-            {/* Two-Factor Authentication Section */}
+            {/* Security (MFA / Account Management) — managed by Keycloak */}
             <div className="glass-panel p-6 rounded-xl space-y-4">
                 <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
                     <Shield className="h-6 w-6 text-brand-500" />
                     <div>
-                        <h2 className="text-xl font-bold text-white">Two-Factor Authentication</h2>
-                        <p className="text-sm text-gray-400">Add an extra layer of security to your account.</p>
+                        <h2 className="text-xl font-bold text-white">Security</h2>
+                        <p className="text-sm text-gray-400">Manage two-factor authentication, passkeys, and sessions.</p>
                     </div>
                 </div>
 
-                {totpEnabled ? (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                                Enabled
-                            </span>
-                            <p className="text-sm text-gray-400">Your account is protected with two-factor authentication.</p>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => setBackupCodesOpen(true)}
-                                disabled={offlineElectron}
-                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : undefined}
-                            >
-                                <KeySquare className="mr-2 h-4 w-4" />
-                                Regenerate Backup Codes
-                            </button>
-                            <button
-                                onClick={() => setTotpDisableOpen(true)}
-                                disabled={offlineElectron}
-                                className="inline-flex items-center px-4 py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : undefined}
-                            >
-                                <ShieldOff className="mr-2 h-4 w-4" />
-                                Disable 2FA
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-400">
-                            Protect your account by requiring a code from an authenticator app when signing in.
-                        </p>
-                        <button
-                            onClick={() => setTotpSetupOpen(true)}
-                            disabled={offlineElectron}
-                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                            title={offlineElectron ? 'Requires connection' : undefined}
-                        >
-                            {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Shield className="mr-2 h-4 w-4" />}
-                            {offlineElectron ? 'Requires Connection' : 'Enable Two-Factor Authentication'}
-                        </button>
-                    </div>
-                )}
+                <p className="text-sm text-gray-400">
+                    Multi-factor authentication (TOTP, passkeys) and session management are handled by the identity provider.
+                    Use the Keycloak Account Console to configure security settings for your account.
+                </p>
+
+                <a
+                    href={KEYCLOAK_ACCOUNT_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Account Console
+                </a>
             </div>
-
-            {/* Passkeys Section */}
-            <div className="glass-panel p-6 rounded-xl space-y-4">
-                <div className="flex items-center gap-3 border-b border-dark-border pb-4 mb-4">
-                    <Fingerprint className="h-6 w-6 text-brand-500" />
-                    <div>
-                        <h2 className="text-xl font-bold text-white">Passkeys</h2>
-                        <p className="text-sm text-gray-400">Sign in without a password using your device's biometrics or security key.</p>
-                    </div>
-                </div>
-
-                {webauthnDegraded && (
-                    <p className="text-[13px] text-amber-400">
-                        Passkeys are unavailable because port 17170 was occupied at startup. Restart the app to re-enable passkeys.
-                    </p>
-                )}
-
-                {hasPasskeys ? (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                                Active
-                            </span>
-                            <p className="text-sm text-gray-400">You have passkeys registered for passwordless sign-in.</p>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => setPasskeyManageOpen(true)}
-                                disabled={offlineElectron || webauthnDegraded}
-                                className="inline-flex items-center px-4 py-2 bg-white/5 hover:bg-white/10 border border-dark-border text-gray-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
-                            >
-                                <Fingerprint className="mr-2 h-4 w-4" />
-                                Manage Passkeys
-                            </button>
-                            <button
-                                onClick={() => setPasskeySetupOpen(true)}
-                                disabled={offlineElectron || webauthnDegraded}
-                                className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
-                            >
-                                {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
-                                {offlineElectron ? 'Requires Connection' : 'Add Passkey'}
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-400">
-                            Use Windows Hello, Touch ID, or a security key for fast, secure passwordless sign-in.
-                        </p>
-                        <button
-                            onClick={() => setPasskeySetupOpen(true)}
-                            disabled={offlineElectron || webauthnDegraded}
-                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                            title={offlineElectron ? 'Requires connection' : webauthnDegraded ? 'Passkeys unavailable (port conflict)' : undefined}
-                        >
-                            {offlineElectron ? <WifiOff className="mr-2 h-4 w-4" /> : <Fingerprint className="mr-2 h-4 w-4" />}
-                            {offlineElectron ? 'Requires Connection' : 'Set Up a Passkey'}
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <TOTPSetupModal open={totpSetupOpen} onClose={() => setTotpSetupOpen(false)} onEnabled={handleTotpEnabled} />
-            <TOTPDisableModal open={totpDisableOpen} onClose={() => setTotpDisableOpen(false)} onDisabled={handleTotpDisabled} />
-            <BackupCodesModal open={backupCodesOpen} onClose={() => setBackupCodesOpen(false)} />
-            <PasskeySetupModal open={passkeySetupOpen} onClose={() => setPasskeySetupOpen(false)} onRegistered={handlePasskeyRegistered} />
-            <PasskeyManageModal open={passkeyManageOpen} onClose={() => setPasskeyManageOpen(false)} onChanged={handlePasskeyChanged} onAddNew={() => setPasskeySetupOpen(true)} />
 
             {/* Desktop Connection Settings (Electron only) */}
             {window.electronAPI && (

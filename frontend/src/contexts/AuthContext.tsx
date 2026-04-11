@@ -1,23 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth as useOidcAuth } from 'react-oidc-context';
 import api from '../utils/api';
 import { queryClient } from '../main';
-import { useOffline } from './OfflineContext';
-
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 interface User {
     id: string;
     email: string;
     full_name: string;
     is_superuser: boolean;
-    totp_enabled: boolean;
-    has_passkeys: boolean;
 }
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (token: string) => void;
+    login: () => void;
     logout: () => void;
     refreshUser: () => Promise<void>;
     loading: boolean;
@@ -26,96 +22,88 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+    const oidc = useOidcAuth();
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
-    const lastActivityRef = useRef<number>(Date.now());
 
-    const logout = useCallback(() => {
-        const currentToken = localStorage.getItem('token');
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        queryClient.clear();
-        // Fire-and-forget with explicit header since localStorage is already cleared
-        if (currentToken) {
-            api.post('/auth/logout', null, {
-                headers: { Authorization: `Bearer ${currentToken}` }
-            }).catch(() => {});
-        }
-    }, []);
+    const token = oidc.user?.access_token ?? null;
 
+    // Sync access token into Axios default header
     useEffect(() => {
         if (token) {
-            api.get('/auth/me')
-                .then(res => {
-                    setUser(res.data);
-                    // Cache session in Electron for offline access + sync engine token
-                    if (window.electronAPI) {
-                        window.electronAPI.cacheSession(token, res.data).catch(() => {});
-                    }
-                })
-                .catch(() => {
-                    logout();
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         } else {
-            setUser(null);
-            setLoading(false);
+            delete api.defaults.headers.common['Authorization'];
         }
     }, [token]);
 
-    // Reset inactivity timer on user interaction
+    // Fetch local user profile when token changes
     useEffect(() => {
-        const resetActivity = () => { lastActivityRef.current = Date.now(); };
-        const events = ['mousemove', 'keydown', 'click', 'scroll'];
-        events.forEach(e => window.addEventListener(e, resetActivity, { passive: true }));
-        return () => events.forEach(e => window.removeEventListener(e, resetActivity));
-    }, []);
+        if (!token) {
+            setUser(null);
+            setLoading(!oidc.isLoading ? false : true);
+            return;
+        }
 
-    // Check inactivity every minute while logged in (skip when offline in Electron)
-    const { isOnline } = useOffline();
+        api.get('/auth/me')
+            .then(res => {
+                setUser(res.data);
+                // Cache session in Electron for offline access
+                if (window.electronAPI) {
+                    const refreshToken = oidc.user?.refresh_token || '';
+                    window.electronAPI.cacheSession(token, res.data, refreshToken).catch(() => {});
+                }
+            })
+            .catch(() => {
+                setUser(null);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    }, [token]);
+
+    // Handle OIDC loading state
     useEffect(() => {
-        if (!token) return;
-        const interval = setInterval(() => {
-            // Don't auto-logout while offline — user needs cached session
-            if (!isOnline) return;
-            if (Date.now() - lastActivityRef.current > INACTIVITY_TIMEOUT_MS) {
-                logout();
-            }
-        }, 60_000);
-        return () => clearInterval(interval);
-    }, [token, logout, isOnline]);
+        if (!oidc.isLoading && !oidc.isAuthenticated) {
+            setLoading(false);
+        }
+    }, [oidc.isLoading, oidc.isAuthenticated]);
+
+    const login = useCallback(() => {
+        queryClient.clear();
+        oidc.signinRedirect();
+    }, [oidc]);
+
+    const logout = useCallback(() => {
+        queryClient.clear();
+        setUser(null);
+        // Fire-and-forget audit log
+        if (token) {
+            api.post('/auth/logout').catch(() => {});
+        }
+        oidc.signoutRedirect();
+    }, [oidc, token]);
 
     // Auto-logout on 401 responses
     useEffect(() => {
         const id = api.interceptors.response.use(
             (res) => res,
             (error) => {
-                if (error.response?.status === 401 && localStorage.getItem('token')) {
-                    logout();
+                if (error.response?.status === 401 && oidc.isAuthenticated) {
+                    oidc.signinRedirect();
                 }
                 return Promise.reject(error);
             }
         );
         return () => api.interceptors.response.eject(id);
-    }, [logout]);
-
-    const login = (newToken: string) => {
-        queryClient.clear();
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-        lastActivityRef.current = Date.now();
-    };
+    }, [oidc]);
 
     const refreshUser = useCallback(async () => {
         try {
             const res = await api.get('/auth/me');
             setUser(res.data);
         } catch {
-            // If refresh fails, don't logout — user might just have a stale session
+            // If refresh fails, don't logout
         }
     }, []);
 
