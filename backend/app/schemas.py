@@ -459,3 +459,14 @@ class AuditLogResponse(AuditLogBase):
     user: Optional[UserResponse] = None
     class Config:
         from_attributes = True
+
+# --- Trash / Recycle Bin ---
+class TrashItemResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    resource_type: str
+    deleted_at: datetime
+    days_remaining: int
+    parent_name: Optional[str] = None
+    parent_id: Optional[uuid.UUID] = None
+    parent_deleted: bool = False

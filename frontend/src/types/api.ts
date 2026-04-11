@@ -197,6 +197,18 @@ export interface Setting {
     description: string | null;
 }
 
+// --- Trash ---
+export interface TrashItem {
+    id: string;
+    name: string;
+    resource_type: string;
+    deleted_at: string;
+    days_remaining: number;
+    parent_name: string | null;
+    parent_id: string | null;
+    parent_deleted: boolean;
+}
+
 // --- Utility type for Axios error shape ---
 export interface ApiError {
     response?: {

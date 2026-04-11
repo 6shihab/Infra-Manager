@@ -431,6 +431,12 @@ export function offlineApiDispatcher(db: Database, request: OfflineRequest): Off
             return { data: { key: params.key, value: body.value }, status: 200 };
         }
 
+        // ===== TRASH (online-only) =====
+        if (endpoint.startsWith('/trash')) {
+            if (m === 'GET') return { data: [], status: 200, headers: { 'x-total-count': '0' } };
+            return { data: { detail: 'Trash operations require an active connection.' }, status: 403 };
+        }
+
         // ===== WEBAUTHN / PASSKEYS (online-only) =====
         if (endpoint.startsWith('/auth/webauthn')) {
             return { data: { detail: 'Passkey operations require an active connection.' }, status: 403 };

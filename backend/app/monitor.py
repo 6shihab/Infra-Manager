@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import update as sa_update, select
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Project, Server, AuditLog, DatabaseEngine, Component, ProjectGroupAccess, ProjectServer, user_group_link
+from app.models import Project, ProjectFolder, Server, AuditLog, DatabaseEngine, Component, ProjectGroupAccess, ProjectServer, user_group_link
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -248,7 +248,7 @@ async def cleanup_soft_deleted_records():
     db: Session = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
-        cutoff_date = now - timedelta(days=30)
+        cutoff_date = now - timedelta(days=settings.audit_log_retention_days)
         logger.info("Running soft-delete cleanup (permanently deleting records older than %s)...", cutoff_date)
 
         # Delete children before parents to avoid FK violations
@@ -256,9 +256,10 @@ async def cleanup_soft_deleted_records():
         deleted_dbs = db.query(DatabaseEngine).filter(DatabaseEngine.is_deleted == True, DatabaseEngine.deleted_at < cutoff_date).delete()
         deleted_comps = db.query(Component).filter(Component.is_deleted == True, Component.deleted_at < cutoff_date).delete()
         deleted_projects = db.query(Project).filter(Project.is_deleted == True, Project.deleted_at < cutoff_date).delete()
+        deleted_folders = db.query(ProjectFolder).filter(ProjectFolder.is_deleted == True, ProjectFolder.deleted_at < cutoff_date).delete()
 
         db.commit()
-        total_deleted = deleted_projects + deleted_servers + deleted_dbs + deleted_comps
+        total_deleted = deleted_projects + deleted_servers + deleted_dbs + deleted_comps + deleted_folders
         if total_deleted > 0:
             logger.info("Permanently deleted %d soft-deleted records.", total_deleted)
     except Exception as e:

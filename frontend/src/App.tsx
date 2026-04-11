@@ -27,6 +27,7 @@ const Settings = React.lazy(() => import('./pages/Settings').then(module => ({ d
 const Users = React.lazy(() => import('./pages/Users').then(module => ({ default: module.Users })));
 const Groups = React.lazy(() => import('./pages/Groups').then(module => ({ default: module.Groups })));
 const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(module => ({ default: module.AuditLogs })));
+const Trash = React.lazy(() => import('./pages/Trash').then(module => ({ default: module.Trash })));
 const ServerConfig = React.lazy(() => import('./pages/ServerConfig').then(module => ({ default: module.ServerConfig })));
 
 const Spinner = () => (
@@ -85,6 +86,7 @@ function App() {
                 <Route path="users" element={<Users />} />
                 <Route path="groups" element={<Groups />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
+                <Route path="trash" element={<Trash />} />
                 <Route path="*" element={
                   <div className="flex flex-col items-center justify-center h-[60vh]">
                     <h2 className="text-2xl font-bold mb-2">404 - Page Not Found</h2>
