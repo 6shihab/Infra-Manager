@@ -128,6 +128,7 @@ export interface ProjectFolder {
     color: string | null;
     position: number;
     parent_id: string | null;
+    created_by: string | null;
     children: ProjectFolder[];
 }
 

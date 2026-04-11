@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import api from '../utils/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { Select } from '../components/Select';
-import { useProjectFolders, flattenTree } from '../hooks/useProjectFolders';
+import { useProjectFolders, useProjectFoldersFlat, flattenTree, filterFolderTree } from '../hooks/useProjectFolders';
+import { useAuth } from '../contexts/AuthContext';
 
 export function ProjectForm() {
     const navigate = useNavigate();
@@ -15,8 +16,31 @@ export function ProjectForm() {
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(isEditMode);
     const toast = useToast();
+    const { user } = useAuth();
 
-    const { data: folders = [] } = useProjectFolders();
+    const { data: allFolders = [] } = useProjectFolders();
+    const { data: foldersFlat = [] } = useProjectFoldersFlat();
+    const { data: projects = [] } = useQuery({
+        queryKey: ['projects'],
+        queryFn: async () => { const { data } = await api.get('/projects/'); return data; },
+    });
+
+    // Compute accessible folder IDs from user's projects
+    const folders = useMemo(() => {
+        if (user?.is_superuser) return allFolders;
+        const accessibleIds = new Set<string>();
+        for (const p of projects as { folder_id?: string }[]) {
+            if (p.folder_id) {
+                accessibleIds.add(p.folder_id);
+                let current = foldersFlat.find((f: { id: string }) => f.id === p.folder_id);
+                while (current?.parent_id) {
+                    accessibleIds.add(current.parent_id);
+                    current = foldersFlat.find((f: { id: string }) => f.id === current!.parent_id);
+                }
+            }
+        }
+        return filterFolderTree(allFolders, user?.id, user?.is_superuser, accessibleIds);
+    }, [allFolders, foldersFlat, projects, user]);
 
     const [formData, setFormData] = useState({
         name: '',

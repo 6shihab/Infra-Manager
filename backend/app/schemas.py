@@ -293,6 +293,7 @@ class ProjectFolderResponse(BaseModel):
     color: Optional[str] = None
     position: int = 0
     parent_id: Optional[uuid.UUID] = None
+    created_by: Optional[uuid.UUID] = None
     children: List['ProjectFolderResponse'] = []
     class Config:
         from_attributes = True

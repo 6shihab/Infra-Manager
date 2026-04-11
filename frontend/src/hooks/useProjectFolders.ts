@@ -36,6 +36,27 @@ export function flattenTree(folders: ProjectFolder[], depth = 0): Array<ProjectF
     return result;
 }
 
+/** Filter folder tree to only folders the user created or has project access to */
+export function filterFolderTree(
+    folders: ProjectFolder[],
+    currentUserId?: string,
+    isSuperuser?: boolean,
+    accessibleFolderIds?: Set<string>,
+): ProjectFolder[] {
+    if (isSuperuser) return folders;
+    return folders
+        .map((folder) => {
+            const filteredChildren = filterFolderTree(folder.children || [], currentUserId, isSuperuser, accessibleFolderIds);
+            const isOwner = !!currentUserId && folder.created_by === currentUserId;
+            const hasAccess = !!accessibleFolderIds && accessibleFolderIds.has(folder.id);
+            if (isOwner || hasAccess || filteredChildren.length > 0) {
+                return { ...folder, children: filteredChildren };
+            }
+            return null;
+        })
+        .filter((f): f is ProjectFolder => f !== null);
+}
+
 export function useCreateFolder() {
     const queryClient = useQueryClient();
     return useMutation({

@@ -187,6 +187,24 @@ export function Projects() {
     // Current folder object (null = root)
     const currentFolder = currentFolderId ? findFolder(currentFolderId) : null;
 
+    // All folder IDs the user has project access to (including ancestors)
+    const accessibleFolderIds = useMemo(() => {
+        if (!projects || !foldersFlat.length) return new Set<string>();
+        const ids = new Set<string>();
+        for (const p of projects as ProjectListItem[]) {
+            if (p.folder_id) {
+                ids.add(p.folder_id);
+                // Walk up parent chain so ancestor folders are also visible
+                let current = foldersFlat.find(f => f.id === p.folder_id);
+                while (current?.parent_id) {
+                    ids.add(current.parent_id);
+                    current = foldersFlat.find(f => f.id === current!.parent_id);
+                }
+            }
+        }
+        return ids;
+    }, [projects, foldersFlat]);
+
     // Filter projects by search + environment
     const baseFiltered = useMemo(() => {
         if (!projects) return [];
@@ -281,16 +299,14 @@ export function Projects() {
                     <p className="text-sm text-gray-400 mt-1">Manage your deployed applications and infrastructure.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {user?.is_superuser && (
-                        <button
-                            onClick={() => setFolderManagerOpen(true)}
-                            className="inline-flex items-center justify-center px-3 py-2 border border-dark-border rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
-                            title="Manage Folders"
-                        >
-                            <Settings2 className="h-4 w-4 mr-1.5" />
-                            Folders
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setFolderManagerOpen(true)}
+                        className="inline-flex items-center justify-center px-3 py-2 border border-dark-border rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
+                        title="Manage Folders"
+                    >
+                        <Settings2 className="h-4 w-4 mr-1.5" />
+                        Folders
+                    </button>
                     <Link to="/projects/new" className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 focus:ring-offset-dark-bg transition-colors">
                         <Plus className="-ml-1 mr-2 h-5 w-5" />
                         Add Project
@@ -378,7 +394,7 @@ export function Projects() {
                 </div>
             )}
 
-            <FolderManager open={folderManagerOpen} onClose={() => setFolderManagerOpen(false)} />
+            <FolderManager open={folderManagerOpen} onClose={() => setFolderManagerOpen(false)} currentUserId={user?.id} isSuperuser={user?.is_superuser} accessibleFolderIds={accessibleFolderIds} />
         </div>
     );
 }

@@ -19,6 +19,7 @@ def _build_tree(folders: list[models.ProjectFolder]) -> list[dict]:
         by_id[f.id] = {
             "id": f.id, "name": f.name, "color": f.color,
             "position": f.position, "parent_id": f.parent_id,
+            "created_by": f.created_by,
             "children": [],
         }
     roots = []

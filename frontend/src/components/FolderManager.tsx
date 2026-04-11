@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Plus, Pencil, Trash2, Check, ChevronDown, ChevronRight, FolderPlus } from 'lucide-react';
-import { useProjectFolders, useCreateFolder, useUpdateFolder, useDeleteFolder } from '../hooks/useProjectFolders';
+import { useProjectFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, filterFolderTree } from '../hooks/useProjectFolders';
 import { useToast } from './Toast';
 import { ConfirmDialog } from './ConfirmDialog';
 import type { ProjectFolder } from '../types/api';
@@ -10,6 +10,9 @@ const PRESET_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#
 interface FolderManagerProps {
     open: boolean;
     onClose: () => void;
+    currentUserId?: string;
+    isSuperuser?: boolean;
+    accessibleFolderIds?: Set<string>;
 }
 
 function FolderNode({
@@ -18,15 +21,20 @@ function FolderNode({
     onEdit,
     onDelete,
     onAddChild,
+    currentUserId,
+    isSuperuser,
 }: {
     folder: ProjectFolder;
     depth: number;
     onEdit: (folder: ProjectFolder) => void;
     onDelete: (folder: ProjectFolder) => void;
     onAddChild: (parentId: string) => void;
+    currentUserId?: string;
+    isSuperuser?: boolean;
 }) {
     const [expanded, setExpanded] = useState(true);
     const hasChildren = folder.children && folder.children.length > 0;
+    const canManage = !!isSuperuser || (!!currentUserId && folder.created_by === currentUserId);
 
     return (
         <div>
@@ -60,20 +68,24 @@ function FolderNode({
                 >
                     <FolderPlus className="h-3.5 w-3.5" />
                 </button>
-                <button
-                    onClick={() => onEdit(folder)}
-                    className="text-gray-500 hover:text-gray-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Edit"
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                    onClick={() => onDelete(folder)}
-                    className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Delete"
-                >
-                    <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {canManage && (
+                    <>
+                        <button
+                            onClick={() => onEdit(folder)}
+                            className="text-gray-500 hover:text-gray-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Edit"
+                        >
+                            <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={() => onDelete(folder)}
+                            className="text-gray-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* Children */}
@@ -87,6 +99,8 @@ function FolderNode({
                             onEdit={onEdit}
                             onDelete={onDelete}
                             onAddChild={onAddChild}
+                            currentUserId={currentUserId}
+                            isSuperuser={isSuperuser}
                         />
                     ))}
                 </div>
@@ -95,8 +109,9 @@ function FolderNode({
     );
 }
 
-export function FolderManager({ open, onClose }: FolderManagerProps) {
-    const { data: folders = [] } = useProjectFolders();
+export function FolderManager({ open, onClose, currentUserId, isSuperuser, accessibleFolderIds }: FolderManagerProps) {
+    const { data: allFolders = [] } = useProjectFolders();
+    const folders = filterFolderTree(allFolders, currentUserId, isSuperuser, accessibleFolderIds);
     const createFolder = useCreateFolder();
     const updateFolder = useUpdateFolder();
     const deleteFolder = useDeleteFolder();
@@ -256,6 +271,8 @@ export function FolderManager({ open, onClose }: FolderManagerProps) {
                                     onEdit={startEdit}
                                     onDelete={(f) => setDeleteTarget({ id: f.id, name: f.name })}
                                     onAddChild={handleAddChild}
+                                    currentUserId={currentUserId}
+                                    isSuperuser={isSuperuser}
                                 />
                             ))
                         )}
