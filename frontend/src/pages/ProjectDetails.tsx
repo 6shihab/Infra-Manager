@@ -282,8 +282,8 @@ export function ProjectDetails() {
                 title={deleteConfig?.title ?? ''}
                 message={
                     deleteConfig?.type === 'project'
-                        ? `Are you sure you want to delete the project "${deleteConfig.name}"? This action cannot be undone and will permanently delete all associated data.`
-                        : `Are you sure you want to remove "${deleteConfig?.name}" from this project? This action cannot be undone.`
+                        ? `Are you sure you want to delete the project "${deleteConfig.name}"? It will be moved to Trash and automatically deleted after 30 days.`
+                        : `Are you sure you want to remove "${deleteConfig?.name}" from this project?`
                 }
                 confirmText={deleteConfig?.name}
                 loading={deleting}

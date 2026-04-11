@@ -187,21 +187,23 @@ export function Settings() {
                             {selfPwMsg.text}
                         </div>
                     )}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
-                            <input type="password" value={selfPw.next} onChange={e => setSelfPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                    <form onSubmit={e => { e.preventDefault(); handleSelfPwChange(); }}>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                                <input type="password" value={selfPw.next} onChange={e => setSelfPw(p => ({ ...p, next: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="Enter new password" autoComplete="new-password" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                                <input type="password" value={selfPw.confirm} onChange={e => setSelfPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="Confirm new password" autoComplete="new-password" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
-                            <input type="password" value={selfPw.confirm} onChange={e => setSelfPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="••••••••" />
+                        <div className="mt-4 flex justify-end">
+                            <button type="submit" disabled={selfPwSaving || offlineElectron} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50" title={offlineElectron ? 'Requires connection' : undefined}>
+                                {offlineElectron ? <><WifiOff className="mr-2 h-4 w-4" />Requires Connection</> : selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
+                            </button>
                         </div>
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                        <button onClick={handleSelfPwChange} disabled={selfPwSaving || offlineElectron} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50" title={offlineElectron ? 'Requires connection' : undefined}>
-                            {offlineElectron ? <><WifiOff className="mr-2 h-4 w-4" />Requires Connection</> : selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
-                        </button>
-                    </div>
+                    </form>
                 </div>
             </div>
 

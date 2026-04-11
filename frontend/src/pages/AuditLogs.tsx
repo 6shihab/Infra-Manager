@@ -207,7 +207,7 @@ export function AuditLogs() {
                                 <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Timestamp</th>
                                 <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">User</th>
                                 <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</th>
-                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Resource Type</th>
+                                <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Resource Type</th>
                                 <th scope="col" className="px-3 py-2 sm:px-6 sm:py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Resource Name</th>
                             </tr>
                         </thead>
@@ -246,7 +246,7 @@ export function AuditLogs() {
                                             {log.action}
                                         </span>
                                     </td>
-                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-300 hidden md:table-cell">
+                                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm font-medium text-gray-300 hidden sm:table-cell">
                                         <div className="flex items-center">
                                             <FileText className="mr-2 h-4 w-4 text-brand-500/50" />
                                             {log.resource_type}

@@ -5,12 +5,11 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-import jwt
-from jwt.exceptions import InvalidTokenError
 
 from app import models
 from app.config import settings
 from app.database import SessionLocal
+from app.keycloak import validate_keycloak_token
 from app.notifications import bus
 
 logger = logging.getLogger(__name__)
@@ -19,34 +18,20 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _authenticate_token(token: str, db: Session) -> models.User:
-    """Authenticate a raw JWT string (used for SSE where headers can't be sent)."""
+    """Authenticate a Keycloak-issued JWT (used for SSE where headers can't be sent)."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        if payload.get("type") == "totp_pending":
+        payload = validate_keycloak_token(token)
+        keycloak_id: str = payload.get("sub")
+        if not keycloak_id:
             raise credentials_exception
-        email: str = payload.get("sub")
-        jti: str = payload.get("jti")
-        if not email:
-            raise credentials_exception
-    except InvalidTokenError:
+    except Exception:
         raise credentials_exception
 
-    # Check token blacklist by jti
-    if jti:
-        blacklisted = db.query(models.TokenBlocklist).filter(
-            models.TokenBlocklist.jti == jti
-        ).first()
-        if blacklisted:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-            )
-
-    user = db.query(models.User).filter(models.User.email == email).first()
+    user = db.query(models.User).filter(models.User.keycloak_id == keycloak_id).first()
     if user is None or not user.is_active:
         raise credentials_exception
     return user

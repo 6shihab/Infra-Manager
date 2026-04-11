@@ -147,7 +147,7 @@ export function ComponentForm() {
                                     list="type-suggestions"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
-                                    placeholder="e.g. S3 Bucket, Webhook, Custom API..."
+                                    placeholder="e.g. S3 Bucket, Redis Cache..."
                                     className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-white placeholder-gray-500 transition-colors"
                                 />
                                 <datalist id="type-suggestions">

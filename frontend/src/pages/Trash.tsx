@@ -242,6 +242,7 @@ export function Trash() {
                 title="Restore Item"
                 message={`Restore "${restoreTarget?.name}" from trash? It will reappear in its original location.`}
                 confirmLabel="Restore"
+                variant="confirm"
                 loading={restoring}
                 onConfirm={handleRestore}
                 onCancel={() => setRestoreTarget(null)}

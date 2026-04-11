@@ -111,7 +111,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{user?.full_name || 'Admin User'}</p>
-                        <p className="text-xs text-brand-500 truncate">{user?.email}</p>
+                        <p className="text-xs text-brand-500 truncate" title={user?.email}>{user?.email}</p>
                     </div>
                     <button
                         onClick={logout}

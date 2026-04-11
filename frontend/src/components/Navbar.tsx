@@ -58,7 +58,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={handleSearch}
                         className="block w-full pl-10 pr-3 py-2 border border-dark-border rounded-lg leading-5 bg-black/20 text-gray-300 placeholder-gray-500 focus:outline-none focus:bg-dark-card focus:border-brand-500 focus:ring-1 focus:ring-brand-500 sm:text-sm transition-all duration-200"
-                        placeholder="Search projects, servers, databases..."
+                        placeholder="Search projects by name, description, or domain..."
                     />
                 </div>
             </div>

@@ -7,11 +7,12 @@ interface ConfirmDialogProps {
     confirmLabel?: string;
     loading?: boolean;
     confirmText?: string;
+    variant?: 'danger' | 'confirm';
     onConfirm: () => void;
     onCancel: () => void;
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading = false, confirmText, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', loading = false, confirmText, variant = 'danger', onConfirm, onCancel }: ConfirmDialogProps) {
     const [inputValue, setInputValue] = useState('');
 
     if (!open) return null;
@@ -49,9 +50,9 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Delete', l
                     <button
                         onClick={onConfirm}
                         disabled={isConfirmDisabled}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed ${variant === 'danger' ? 'bg-red-600 hover:bg-red-500' : 'bg-brand-600 hover:bg-brand-500'}`}
                     >
-                        {loading ? 'Deleting...' : confirmLabel}
+                        {loading ? 'Processing...' : confirmLabel}
                     </button>
                 </div>
             </div>

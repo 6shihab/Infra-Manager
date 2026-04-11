@@ -154,15 +154,15 @@ export function Servers() {
                                 <div className="space-y-2 mt-4 text-sm">
                                     <div className="flex justify-between items-center text-gray-400">
                                         <span>OS</span>
-                                        <span className="text-gray-200">{server.os || 'Unknown'}</span>
+                                        <span className="text-gray-200">{server.os || '—'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-gray-400">
                                         <span>Region</span>
-                                        <span className="text-gray-200">{server.region || 'Unknown'}</span>
+                                        <span className="text-gray-200">{server.region || '—'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-gray-400">
                                         <span>Default User</span>
-                                        <span className="text-gray-200">{server.username || 'None'}</span>
+                                        <span className="text-gray-200">{server.username || '—'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -186,7 +186,7 @@ export function Servers() {
             <ConfirmDialog
                 open={confirmDelete !== null}
                 title="Delete Server"
-                message={`Are you sure you want to delete the server "${confirmDelete?.name}"? This action cannot be undone.`}
+                message={`Are you sure you want to delete the server "${confirmDelete?.name}"? It will be moved to Trash and automatically deleted after 30 days.`}
                 confirmText={confirmDelete?.name}
                 loading={deleteMutation.isPending}
                 onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}

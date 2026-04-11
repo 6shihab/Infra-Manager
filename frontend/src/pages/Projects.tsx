@@ -342,7 +342,7 @@ export function Projects() {
                         { value: 'Staging', label: 'Staging' },
                         { value: 'Dev', label: 'Dev' },
                     ]}
-                    className="w-full sm:w-40"
+                    className="w-full sm:w-48"
                 />
             </div>
 
@@ -384,12 +384,12 @@ export function Projects() {
                 <div className="text-center py-12 bg-dark-card/30 rounded-xl border border-dark-border">
                     <FolderOpen className="mx-auto h-12 w-12 text-gray-500 mb-4" />
                     <h3 className="text-lg font-medium text-white mb-1">
-                        {searchQuery || environmentFilter !== 'All Environments' ? 'No projects found' : 'This folder is empty'}
+                        {searchQuery || environmentFilter !== 'All Environments' ? 'No projects found' : currentFolderId ? 'This folder is empty' : 'No projects yet'}
                     </h3>
                     <p className="text-gray-400">
                         {searchQuery || environmentFilter !== 'All Environments'
                             ? 'Try adjusting your search or filters.'
-                            : 'Add projects to this folder or create subfolders.'}
+                            : currentFolderId ? 'Add projects to this folder or create subfolders.' : 'Create your first project to get started.'}
                     </p>
                 </div>
             )}

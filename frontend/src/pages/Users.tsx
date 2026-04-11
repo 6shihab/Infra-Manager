@@ -296,8 +296,8 @@ export function Users() {
                 </div>
             )}
 
-            <div className="glass-panel overflow-hidden rounded-xl">
-                <div className="overflow-x-auto">
+            <div className="glass-panel rounded-xl">
+                <div className="overflow-x-auto rounded-xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-dark-border bg-black/20">
@@ -529,7 +529,7 @@ export function Users() {
         <ConfirmDialog
             open={confirmDelete !== null}
             title="Delete User"
-            message={`Are you sure you want to delete the user "${confirmDelete?.name}"? This action cannot be undone.`}
+            message={`Are you sure you want to delete the user "${confirmDelete?.name}"? This action is permanent and cannot be undone.`}
             confirmText={confirmDelete?.name}
             onConfirm={() => confirmDelete && handleDeleteUser(confirmDelete.id)}
             onCancel={() => setConfirmDelete(null)}

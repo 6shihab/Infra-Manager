@@ -94,7 +94,7 @@ export function ProjectServerForm() {
                         className="w-full"
                     />
                     {globalServers?.length === 0 && (
-                        <p className="text-sm text-red-400 mt-2">No global servers available. Please add one from the Servers page first.</p>
+                        <p className="text-sm text-amber-400 mt-2">No global servers available. <Link to="/servers/new" className="text-brand-400 hover:text-brand-300 underline">Create a new server</Link> first, then come back to attach it.</p>
                     )}
                 </div>
 
@@ -126,7 +126,7 @@ export function ProjectServerForm() {
                                 <input type="password"
                                     value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
                                     className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
-                                    placeholder="••••••••••••" />
+                                    placeholder="Enter password" />
                             </div>
                         </div>
 

@@ -71,7 +71,7 @@ export function ProjectHeader({ project, folderName, folderColor, userRole, isSu
                         ) : project.is_online === false ? (
                             <><span className="h-2.5 w-2.5 rounded-full mr-2 bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span> Offline</>
                         ) : (
-                            <><Activity className="mr-2 h-4 w-4 text-gray-500" /> Pending Check...</>
+                            <><Activity className="mr-2 h-4 w-4 text-gray-500" /> Pending</>
                         )}
                     </div>
                 </div>

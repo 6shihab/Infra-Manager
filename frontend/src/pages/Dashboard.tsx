@@ -19,7 +19,7 @@ export function Dashboard() {
 
     const stats = [
         { name: 'Total Projects', value: totalProjects.toString(), icon: FolderKanban, change: 'Active', trend: 'neutral' },
-        { name: 'Active Servers', value: totalServers.toString(), icon: Server, change: 'Active', trend: 'neutral' },
+        { name: 'Total Servers', value: totalServers.toString(), icon: Server, change: 'Registered', trend: 'neutral' },
         { name: 'Databases', value: totalDatabases.toString(), icon: Database, change: 'Stable', trend: 'neutral' },
         { name: 'System Health', value: '100%', icon: Activity, change: 'Optimal', trend: 'up' },
     ];

@@ -174,7 +174,7 @@ export function DatabaseEngines() {
             <ConfirmDialog
                 open={confirmDelete !== null}
                 title="Delete Database Engine"
-                message={`Are you sure you want to delete the database engine "${confirmDelete?.name}"? This action cannot be undone.`}
+                message={`Are you sure you want to delete the database engine "${confirmDelete?.name}"? It will be moved to Trash and automatically deleted after 30 days.`}
                 confirmText={confirmDelete?.name}
                 loading={deleteMutation.isPending}
                 onConfirm={() => { deleteMutation.mutate(confirmDelete!.id); setConfirmDelete(null); }}
