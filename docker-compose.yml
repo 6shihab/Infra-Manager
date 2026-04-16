@@ -17,6 +17,8 @@ services:
     restart: always
     expose:
       - "5432"
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
@@ -35,7 +37,6 @@ services:
     command: start-dev --import-realm
     ports:
       - "${KC_PORT:-9080}:8080"
-      - "9000:9000"
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak

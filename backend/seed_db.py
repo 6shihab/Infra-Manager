@@ -10,11 +10,30 @@ from app.models import (
     ProjectGroupAccess, Setting,
     EnvironmentEnum, AccessLevelEnum,
 )
-from app.auth import get_password_hash
+from app.keycloak import KeycloakAdmin
+
+
+def _create_keycloak_user(kc: KeycloakAdmin, email: str, first_name: str,
+                          last_name: str, password: str,
+                          is_superuser: bool = False) -> str:
+    """Create a user in Keycloak and return the keycloak_id."""
+    kc_id = kc.create_user(
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        temporary_password=password,
+        require_password_update=False,
+    )
+    if is_superuser:
+        kc.assign_realm_role(kc_id, "superuser")
+    print(f"  Created Keycloak user: {email} (id={kc_id})")
+    return kc_id
 
 
 def seed():
     db = SessionLocal()
+    kc = KeycloakAdmin()
+
     try:
         if db.query(Project).count() > 0:
             print("Database already contains data. Skipping seed.")
@@ -26,35 +45,49 @@ def seed():
         ADMIN_EMAIL = "admin@inframanager.local"
         admin = db.query(User).filter(User.email == ADMIN_EMAIL).first()
         if not admin:
+            kc_id = _create_keycloak_user(
+                kc, ADMIN_EMAIL, "System", "Administrator",
+                "Admin@1234", is_superuser=True,
+            )
             admin = User(
                 email=ADMIN_EMAIL,
                 full_name="System Administrator",
-                hashed_password=get_password_hash("Admin@1234"),
+                hashed_password="keycloak-managed",
+                keycloak_id=kc_id,
                 is_active=True,
                 is_superuser=True,
             )
             db.add(admin)
             db.flush()
-            print(f"  Created admin: {ADMIN_EMAIL}")
+            print(f"  Created local admin: {ADMIN_EMAIL}")
 
         # ── 2. Regular users ───────────────────────────────────────────────
+        dev1_kc_id = _create_keycloak_user(
+            kc, "dev1@inframanager.local", "Alice", "Dev", "Dev1@pass1",
+        )
         dev1 = User(
             email="dev1@inframanager.local",
             full_name="Alice Dev",
-            hashed_password=get_password_hash("Dev1@pass1"),
+            hashed_password="keycloak-managed",
+            keycloak_id=dev1_kc_id,
             is_active=True,
             is_superuser=False,
+        )
+
+        dev2_kc_id = _create_keycloak_user(
+            kc, "dev2@inframanager.local", "Bob", "Ops", "Dev2@pass1",
         )
         dev2 = User(
             email="dev2@inframanager.local",
             full_name="Bob Ops",
-            hashed_password=get_password_hash("Dev2@pass1"),
+            hashed_password="keycloak-managed",
+            keycloak_id=dev2_kc_id,
             is_active=True,
             is_superuser=False,
         )
         db.add_all([dev1, dev2])
         db.flush()
-        print("  Created users: dev1, dev2")
+        print("  Created local users: dev1, dev2")
 
         # ── 3. Group ───────────────────────────────────────────────────────
         devops_group = Group(

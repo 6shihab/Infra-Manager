@@ -53,7 +53,7 @@
       "name": "Configure OTP",
       "providerId": "CONFIGURE_TOTP",
       "enabled": true,
-      "defaultAction": true,
+      "defaultAction": false,
       "priority": 10
     },
     {
@@ -419,7 +419,7 @@
         },
         {
           "authenticatorFlow": true,
-          "requirement": "REQUIRED",
+          "requirement": "CONDITIONAL",
           "priority": 20,
           "flowAlias": "browser - conditional otp"
         }

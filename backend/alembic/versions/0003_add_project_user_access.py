@@ -22,7 +22,7 @@ def upgrade() -> None:
             id SERIAL PRIMARY KEY,
             project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            access_level accesslevelenum NOT NULL DEFAULT 'Viewer',
+            access_level accesslevelenum NOT NULL DEFAULT 'VIEWER',
             CONSTRAINT uq_project_user_access UNIQUE (project_id, user_id)
         )
     """)
