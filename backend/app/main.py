@@ -35,6 +35,15 @@ async def lifespan(app: FastAPI):
     logger.info("Starting background monitoring service...")
     start_scheduler()
 
+    # Pre-warm JWKS cache so the first request isn't slow (~500ms cold fetch)
+    try:
+        from app.keycloak import _get_jwks
+        jwks = _get_jwks()
+        jwks.refresh()
+        logger.info("JWKS cache pre-warmed at startup.")
+    except Exception as e:
+        logger.warning("Failed to pre-warm JWKS cache: %s (will fetch on first request)", e)
+
     # Initialize cache
     redis_url = getattr(settings, "redis_url", "redis://localhost:6379")
     try:
