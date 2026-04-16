@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { BackupExportModal } from '../components/BackupExportModal';
+import { BackupImportModal } from '../components/BackupImportModal';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, WifiOff, Smartphone, Fingerprint, Trash2, Pencil, Plus, Check, X } from 'lucide-react';
+import { Save, AlertCircle, Settings as SettingsIcon, User as UserIcon, Lock, Server, Shield, WifiOff, Smartphone, Fingerprint, Trash2, Pencil, Plus, Check, X, Download, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
 import { Select } from '../components/Select';
@@ -39,6 +41,9 @@ export function Settings() {
     const [selfPw, setSelfPw] = useState({ next: '', confirm: '' });
     const [selfPwSaving, setSelfPwSaving] = useState(false);
     const [selfPwMsg, setSelfPwMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     // MFA state
     const [mfaStatus, setMfaStatus] = useState<MfaStatus | null>(null);
@@ -460,6 +465,38 @@ export function Settings() {
                     </div>
                 </div>
             )}
+
+            {/* Backup & Restore Section (Superuser Only) */}
+            {user?.is_superuser && (
+                <div className="glass-panel p-6 rounded-xl space-y-6">
+                    <div className="flex items-center gap-3 border-b border-dark-border pb-4">
+                        <Download className="h-6 w-6 text-brand-500" />
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Backup & Restore</h2>
+                            <p className="text-sm text-gray-400">Export system data or import from a backup file.</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            onClick={() => setShowExportModal(true)}
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export Full Backup
+                        </button>
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="inline-flex items-center px-4 py-2 bg-white/5 border border-dark-border text-white text-sm font-medium rounded-lg hover:bg-white/10 transition-colors"
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import Backup
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <BackupExportModal open={showExportModal} onClose={() => setShowExportModal(false)} />
+            <BackupImportModal open={showImportModal} onClose={() => setShowImportModal(false)} />
         </div>
     );
 }

@@ -14,6 +14,7 @@ import { ServerSection } from '../components/project/ServerSection';
 import { DatabaseSection } from '../components/project/DatabaseSection';
 import { ComponentSection } from '../components/project/ComponentSection';
 import { AccessControlSection } from '../components/project/AccessControlSection';
+import { BackupExportModal } from '../components/BackupExportModal';
 import type { ApiError } from '../types/api';
 
 export function ProjectDetails() {
@@ -48,6 +49,7 @@ export function ProjectDetails() {
     const [noteText, setNoteText] = useState('');
     const [savingNote, setSavingNote] = useState(false);
     const [noteCollapsed, setNoteCollapsed] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
 
     useEffect(() => {
         if (user?.is_superuser) {
@@ -207,6 +209,7 @@ export function ProjectDetails() {
                 canEdit={canEdit}
                 canDelete={canDelete}
                 onDeleteProject={handleDeleteProject}
+                onExportProject={() => setShowExportModal(true)}
             />
 
             <hr className="border-dark-border my-6" />
@@ -310,6 +313,8 @@ export function ProjectDetails() {
                 onConfirm={() => confirmRemoveUser && handleRemoveUser(confirmRemoveUser.id)}
                 onCancel={() => setConfirmRemoveUser(null)}
             />
+
+            <BackupExportModal open={showExportModal} onClose={() => setShowExportModal(false)} projectId={project?.id} />
         </div>
     );
 }

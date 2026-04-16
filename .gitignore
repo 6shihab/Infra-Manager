@@ -82,3 +82,5 @@ desktop/release/
 .claude/
 .playwright-mcp/
 .mcp.json
+
+docs/

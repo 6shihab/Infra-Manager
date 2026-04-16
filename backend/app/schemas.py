@@ -413,3 +413,33 @@ class TrashItemResponse(BaseModel):
     parent_name: Optional[str] = None
     parent_id: Optional[uuid.UUID] = None
     parent_deleted: bool = False
+
+# --- Backup / Export / Import ---
+class BackupExportRequest(BaseModel):
+    passphrase: str = Field(..., min_length=8, max_length=128)
+
+class ImportPreviewSummary(BaseModel):
+    total: int
+    new: int
+    existing: int
+
+class ImportPreviewResponse(BaseModel):
+    valid: bool
+    version: str
+    type: str
+    exported_at: str
+    summary: Dict[str, ImportPreviewSummary]
+    warnings: List[str]
+
+class ImportDetailItem(BaseModel):
+    type: str
+    name: str
+    action: str
+    reason: Optional[str] = None
+
+class ImportResponse(BaseModel):
+    success: bool
+    created: int
+    skipped: int
+    errors: int
+    details: List[ImportDetailItem]

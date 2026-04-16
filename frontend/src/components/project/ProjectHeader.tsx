@@ -20,6 +20,7 @@ interface ProjectHeaderProps {
     canEdit: boolean;
     canDelete: boolean;
     onDeleteProject: () => void;
+    onExportProject?: () => void;
 }
 
 const roleBadgeClass: Record<string, string> = {
@@ -28,7 +29,7 @@ const roleBadgeClass: Record<string, string> = {
     Viewer: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
 };
 
-export function ProjectHeader({ project, folderName, folderColor, userRole, isSuperuser, canEdit, canDelete, onDeleteProject }: ProjectHeaderProps) {
+export function ProjectHeader({ project, folderName, folderColor, userRole, isSuperuser, canEdit, canDelete, onDeleteProject, onExportProject }: ProjectHeaderProps) {
     return (
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
@@ -78,6 +79,11 @@ export function ProjectHeader({ project, folderName, folderColor, userRole, isSu
             </div>
 
             <div className="flex flex-wrap gap-2 sm:gap-3">
+                {isSuperuser && onExportProject && (
+                    <button onClick={onExportProject} className="px-4 py-2 bg-white/5 border border-dark-border text-white text-sm font-medium rounded-lg hover:bg-white/10 transition">
+                        Export
+                    </button>
+                )}
                 {canDelete && (
                     <button onClick={onDeleteProject} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500 hover:text-red-400 text-sm font-medium rounded-lg hover:bg-red-500/20 transition">
                         Delete Project
