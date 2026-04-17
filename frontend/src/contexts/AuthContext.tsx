@@ -55,13 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     window.electronAPI.cacheSession(token, res.data, refreshToken).catch(() => {});
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 setUser(null);
+                // If token is expired/invalid (401), clear stale OIDC session and redirect to login
+                if (err?.response?.status === 401) {
+                    oidc.removeUser().then(() => oidc.signinRedirect()).catch(() => {});
+                }
             })
             .finally(() => {
                 setLoading(false);
             });
-    }, [token]);
+    }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Handle OIDC loading state
     useEffect(() => {

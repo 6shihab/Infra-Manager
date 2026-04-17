@@ -386,11 +386,20 @@ export function Projects() {
                     <h3 className="text-lg font-medium text-white mb-1">
                         {searchQuery || environmentFilter !== 'All Environments' ? 'No projects found' : currentFolderId ? 'This folder is empty' : 'No projects yet'}
                     </h3>
-                    <p className="text-gray-400">
+                    <p className="text-gray-400 mb-4">
                         {searchQuery || environmentFilter !== 'All Environments'
                             ? 'Try adjusting your search or filters.'
                             : currentFolderId ? 'Add projects to this folder or create subfolders.' : 'Create your first project to get started.'}
                     </p>
+                    {!searchQuery && environmentFilter === 'All Environments' && !currentFolderId && (
+                        <Link
+                            to="/projects/new"
+                            className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-brand-500/20"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Project
+                        </Link>
+                    )}
                 </div>
             )}
 

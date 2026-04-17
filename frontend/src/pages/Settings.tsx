@@ -147,7 +147,15 @@ export function Settings() {
             {message && (
                 <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                     {message.type === 'error' && <AlertCircle className="h-5 w-5" />}
-                    <p className="text-sm font-medium">{message.text}</p>
+                    <p className="text-sm font-medium flex-1">{message.text}</p>
+                    {message.text.includes('Failed to load') && (
+                        <button
+                            onClick={() => { setMessage(null); setLoading(true); fetchSettings(); }}
+                            className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors shrink-0"
+                        >
+                            Retry
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -201,10 +209,13 @@ export function Settings() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
                                 <input type="password" value={selfPw.confirm} onChange={e => setSelfPw(p => ({ ...p, confirm: e.target.value }))} className="w-full px-4 py-2 bg-black/30 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white" placeholder="Confirm new password" autoComplete="new-password" />
+                                {selfPw.confirm && selfPw.next !== selfPw.confirm && (
+                                    <p className="text-xs text-red-400 mt-1">Passwords do not match.</p>
+                                )}
                             </div>
                         </div>
                         <div className="mt-4 flex justify-end">
-                            <button type="submit" disabled={selfPwSaving || offlineElectron} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50" title={offlineElectron ? 'Requires connection' : undefined}>
+                            <button type="submit" disabled={selfPwSaving || !selfPw.next || !selfPw.confirm || selfPw.next !== selfPw.confirm || offlineElectron} className="inline-flex items-center px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50" title={offlineElectron ? 'Requires connection' : undefined}>
                                 {offlineElectron ? <><WifiOff className="mr-2 h-4 w-4" />Requires Connection</> : selfPwSaving ? 'Saving...' : <><Lock className="mr-2 h-4 w-4" />Change Password</>}
                             </button>
                         </div>

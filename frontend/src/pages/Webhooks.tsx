@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Webhook, Edit, Trash2, Play, AlertCircle } from 'lucide-react';
+import { Plus, Webhook, Edit, Trash2, Play, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -97,6 +97,26 @@ export function Webhooks() {
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [testingId, setTestingId] = useState<string | null>(null);
+    const [sortField, setSortField] = useState<'name' | 'type' | 'last_triggered_at'>('name');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+    const sortedWebhooks = [...webhooks].sort((a, b) => {
+        let cmp = 0;
+        if (sortField === 'name') cmp = a.name.localeCompare(b.name);
+        else if (sortField === 'type') cmp = a.type.localeCompare(b.type);
+        else if (sortField === 'last_triggered_at') {
+            const aTime = a.last_triggered_at ? new Date(a.last_triggered_at).getTime() : 0;
+            const bTime = b.last_triggered_at ? new Date(b.last_triggered_at).getTime() : 0;
+            cmp = aTime - bTime;
+        }
+        return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    const toggleSort = (field: typeof sortField) => {
+        if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortField(field); setSortDir('asc'); }
+    };
+
     const toast = useToast();
 
     const fetchWebhooks = useCallback(async () => {
@@ -221,18 +241,24 @@ export function Webhooks() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-dark-border bg-black/20">
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 select-none" onClick={() => toggleSort('name')}>
+                                        <span className="inline-flex items-center gap-1">Name {sortField === 'name' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</span>
+                                    </th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-200 select-none" onClick={() => toggleSort('type')}>
+                                        <span className="inline-flex items-center gap-1">Type {sortField === 'type' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</span>
+                                    </th>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Events</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Scope</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Active</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Last Triggered</th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Scope</th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Active</th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Status</th>
+                                    <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell cursor-pointer hover:text-gray-200 select-none" onClick={() => toggleSort('last_triggered_at')}>
+                                        <span className="inline-flex items-center gap-1">Last Triggered {sortField === 'last_triggered_at' && (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}</span>
+                                    </th>
                                     <th className="py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-dark-border">
-                                {webhooks.map(webhook => (
+                                {sortedWebhooks.map(webhook => (
                                     <tr key={webhook.id} className="hover:bg-white/5 transition-colors group">
                                         {/* Name */}
                                         <td className="py-3.5 px-4 whitespace-nowrap">
@@ -263,7 +289,7 @@ export function Webhooks() {
                                         </td>
 
                                         {/* Scope */}
-                                        <td className="px-4 py-3 text-sm">
+                                        <td className="px-4 py-3 text-sm hidden sm:table-cell">
                                             {webhook.projects.length === 0 ? (
                                                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">
                                                     All Projects
@@ -280,7 +306,7 @@ export function Webhooks() {
                                         </td>
 
                                         {/* Active toggle */}
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
+                                        <td className="py-3.5 px-4 whitespace-nowrap hidden sm:table-cell">
                                             <ActiveToggle
                                                 id={webhook.id}
                                                 isActive={webhook.is_active}
@@ -289,12 +315,12 @@ export function Webhooks() {
                                         </td>
 
                                         {/* Status */}
-                                        <td className="py-3.5 px-4 whitespace-nowrap">
+                                        <td className="py-3.5 px-4 whitespace-nowrap hidden sm:table-cell">
                                             <StatusIndicator code={webhook.last_status_code} />
                                         </td>
 
                                         {/* Last triggered */}
-                                        <td className="py-3.5 px-4 whitespace-nowrap text-xs text-gray-400">
+                                        <td className="py-3.5 px-4 whitespace-nowrap text-xs text-gray-400 hidden sm:table-cell">
                                             {formatRelativeTime(webhook.last_triggered_at)}
                                         </td>
 

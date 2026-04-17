@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle, ChevronRight } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,7 @@ export function ProjectDetails() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const { user } = useAuth();
     const { data: foldersFlat = [] } = useProjectFoldersFlat();
@@ -170,22 +171,43 @@ export function ProjectDetails() {
         }
     };
 
-    useEffect(() => {
+    const fetchProject = () => {
+        setLoading(true);
+        setError(null);
         api.get(`/projects/${id}`)
             .then(res => setProject(res.data))
-            .catch(err => {
-                console.error("Failed to load project from backend, falling back to mock", err);
-                setProject({ id, name: "Sample Project (Fallback)", description: "Database might be empty or unavailable.", environment: "Dev", primary_domain: "dev.example.com",
-                    server_links: [{ server_id: 101, username: "app_user", password: "mockpassword1", server: { id: 101, name: "Web Node 1", ip_address: "192.168.1.10", os: "Ubuntu 22.04 LTS", region: "AWS us-east-1" } }],
-                    database_links: [{ database_engine_id: 201, db_name: "dev_db", username: "admin", password: "mockpassword2", database_engine: { id: 201, name: "Primary Cluster", engine: "PostgreSQL 15", host: "db.example.internal", port: 5432 } }],
-                    components: [] });
-            })
+            .catch(() => setError('Failed to load project details.'))
             .finally(() => setLoading(false));
-    }, [id]);
+    };
+
+    useEffect(() => {
+        fetchProject();
+    }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <Link to="/projects" className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Projects
+                </Link>
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-6 rounded-xl text-center">
+                    <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-60" />
+                    <p className="text-sm font-medium mb-4">{error}</p>
+                    <button
+                        onClick={fetchProject}
+                        className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
             </div>
         );
     }
@@ -196,10 +218,20 @@ export function ProjectDetails() {
     const canDelete = user?.is_superuser || userRole === 'Admin';
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-300">
-            <Link to="/projects" className="inline-flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Projects
-            </Link>
+            <nav className="flex items-center text-sm text-gray-400 gap-1.5">
+                <Link to="/projects" className="hover:text-white transition-colors flex items-center gap-1">
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Projects
+                </Link>
+                {projectFolder && (
+                    <>
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+                        <span className="text-gray-500">{projectFolder.name}</span>
+                    </>
+                )}
+                <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+                <span className="text-white font-medium truncate max-w-[200px]">{project?.name}</span>
+            </nav>
 
             <ProjectHeader
                 project={project}
@@ -214,6 +246,19 @@ export function ProjectDetails() {
             />
 
             <hr className="border-dark-border my-6" />
+
+            {/* Section jump links */}
+            <div className="flex flex-wrap gap-2 text-xs font-medium">
+                {['servers', 'databases', 'components', ...(user?.is_superuser ? ['webhooks', 'access'] : [])].map(section => (
+                    <button
+                        key={section}
+                        onClick={() => document.getElementById(`section-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-dark-border rounded-lg text-gray-400 hover:text-white transition-colors capitalize"
+                    >
+                        {section}
+                    </button>
+                ))}
+            </div>
 
             <DeploymentNote
                 deploymentNote={project.deployment_note}
@@ -231,59 +276,69 @@ export function ProjectDetails() {
 
             <hr className="border-dark-border my-6" />
 
-            <ServerSection
-                projectId={project.id}
-                serverLinks={project.server_links || []}
-                canEdit={canEdit}
-                onDeleteServer={handleDeleteServer}
-            />
+            <div id="section-servers">
+                <ServerSection
+                    projectId={project.id}
+                    serverLinks={project.server_links || []}
+                    canEdit={canEdit}
+                    onDeleteServer={handleDeleteServer}
+                />
+            </div>
 
-            <DatabaseSection
-                projectId={project.id}
-                databaseLinks={project.database_links || []}
-                canEdit={canEdit}
-                onDeleteDatabase={handleDeleteDatabase}
-            />
+            <div id="section-databases">
+                <DatabaseSection
+                    projectId={project.id}
+                    databaseLinks={project.database_links || []}
+                    canEdit={canEdit}
+                    onDeleteDatabase={handleDeleteDatabase}
+                />
+            </div>
 
-            <ComponentSection
-                projectId={project.id}
-                components={project.components || []}
-                canEdit={canEdit}
-                canDelete={canDelete}
-                onDeleteComponent={handleDeleteComponent}
-            />
+            <div id="section-components">
+                <ComponentSection
+                    projectId={project.id}
+                    components={project.components || []}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onDeleteComponent={handleDeleteComponent}
+                />
+            </div>
 
             {/* Webhooks section (Superuser only) */}
             {user?.is_superuser && project && (
-                <WebhookSection projectId={project.id} />
+                <div id="section-webhooks">
+                    <WebhookSection projectId={project.id} />
+                </div>
             )}
 
             {/* Access Control section (Superuser only) */}
             {user?.is_superuser && (
-                <AccessControlSection
-                    allGroups={allGroups}
-                    groupAccesses={project.group_accesses || []}
-                    assigningGroup={assigningGroup}
-                    selectedGroupId={selectedGroupId}
-                    selectedAccessLevel={selectedAccessLevel}
-                    onToggleAssigningGroup={() => setAssigningGroup(!assigningGroup)}
-                    onSelectedGroupIdChange={setSelectedGroupId}
-                    onSelectedAccessLevelChange={setSelectedAccessLevel}
-                    onAssignGroup={handleAssignGroup}
-                    onConfirmRemoveGroup={setConfirmRemoveGroup}
-                    allUsers={allUsers}
-                    userAccesses={project.user_accesses || []}
-                    createdBy={project.created_by}
-                    assigningUser={assigningUser}
-                    selectedUserId={selectedUserId}
-                    selectedUserAccessLevel={selectedUserAccessLevel}
-                    onToggleAssigningUser={() => setAssigningUser(!assigningUser)}
-                    onSelectedUserIdChange={setSelectedUserId}
-                    onSelectedUserAccessLevelChange={setSelectedUserAccessLevel}
-                    onAssignUser={handleAssignUser}
-                    onConfirmRemoveUser={setConfirmRemoveUser}
-                    offlineElectron={offlineElectron}
-                />
+                <div id="section-access">
+                    <AccessControlSection
+                        allGroups={allGroups}
+                        groupAccesses={project.group_accesses || []}
+                        assigningGroup={assigningGroup}
+                        selectedGroupId={selectedGroupId}
+                        selectedAccessLevel={selectedAccessLevel}
+                        onToggleAssigningGroup={() => setAssigningGroup(!assigningGroup)}
+                        onSelectedGroupIdChange={setSelectedGroupId}
+                        onSelectedAccessLevelChange={setSelectedAccessLevel}
+                        onAssignGroup={handleAssignGroup}
+                        onConfirmRemoveGroup={setConfirmRemoveGroup}
+                        allUsers={allUsers}
+                        userAccesses={project.user_accesses || []}
+                        createdBy={project.created_by}
+                        assigningUser={assigningUser}
+                        selectedUserId={selectedUserId}
+                        selectedUserAccessLevel={selectedUserAccessLevel}
+                        onToggleAssigningUser={() => setAssigningUser(!assigningUser)}
+                        onSelectedUserIdChange={setSelectedUserId}
+                        onSelectedUserAccessLevelChange={setSelectedUserAccessLevel}
+                        onAssignUser={handleAssignUser}
+                        onConfirmRemoveUser={setConfirmRemoveUser}
+                        offlineElectron={offlineElectron}
+                    />
+                </div>
             )}
 
             <ConfirmDialog

@@ -195,8 +195,27 @@ export function Users() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
+            <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+                <div className="space-y-1">
+                    <div className="h-7 w-48 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-4 w-72 bg-white/5 rounded animate-pulse" />
+                </div>
+                <div className="glass-panel rounded-xl overflow-hidden">
+                    <div className="border-b border-dark-border bg-black/20 px-4 py-3 flex gap-4">
+                        {[96, 128, 64, 80].map((w, i) => (
+                            <div key={i} className="h-3 bg-white/5 rounded" style={{ width: w }} />
+                        ))}
+                    </div>
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="px-4 py-4 border-b border-dark-border flex items-center gap-4 animate-pulse">
+                            <div className="h-8 w-8 rounded-full bg-white/5 shrink-0" />
+                            <div className="h-4 w-32 bg-white/5 rounded" />
+                            <div className="h-4 w-48 bg-white/5 rounded" />
+                            <div className="h-5 w-20 bg-white/5 rounded-full" />
+                            <div className="h-4 w-16 bg-white/5 rounded ml-auto" />
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -250,6 +269,7 @@ export function Users() {
                                 <input
                                     type="email"
                                     required
+                                    autoFocus
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
@@ -271,6 +291,7 @@ export function Users() {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="At least 8 characters"
                                     className="w-full px-4 py-2 bg-black/40 border border-dark-border rounded-lg focus:outline-none focus:border-brand-500 text-white"
                                 />
                             </div>
