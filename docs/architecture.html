@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infra Manager — System Architecture</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; color: #1e293b; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #0f172a; }
+  h2 { font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+  .section { padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
+  .section-header { position: sticky; top: 0; z-index: 10; background: #f8f9fa; padding: 12px 40px 8px; border-bottom: 1px solid #e2e8f0; max-width: 100%; }
+  .section-header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: baseline; gap: 12px; }
+  .section-header .sub { font-size: 0.85rem; color: #64748b; }
+  .tooltip-box { position: fixed; background: #1e293b; color: #f8fafc; padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; max-width: 240px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; line-height: 1.5; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+
+  /* ===== Section 1 ===== */
+  .overview-svg-wrap { overflow-x: auto; padding: 8px 0 24px; }
+  .node { cursor: pointer; }
+  .node rect { transition: filter 0.2s, transform 0.2s; transform-origin: center; transform-box: fill-box; }
+  .node:hover rect { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.22)); transform: scale(1.04); }
+  .node text { pointer-events: none; }
+  .arrow-label { font-size: 11px; fill: #475569; }
+  .node-title { font-size: 13px; font-weight: 700; }
+  .node-sub { font-size: 10.5px; fill: #475569; }
+
+  /* ===== Section 2 ===== */
+  .backend-section { padding: 16px 40px 40px; max-width: 1200px; margin: 0 auto; }
+  .layer { border-radius: 12px; margin-bottom: 14px; padding: 14px 18px; }
+  .layer-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; opacity: 0.75; }
+  .boxes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .box {
+    border-radius: 8px; padding: 7px 13px; font-size: 0.8rem; font-weight: 600;
+    cursor: default; transition: transform 0.15s, box-shadow 0.15s;
+    white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .box:hover { transform: scale(1.05); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+
+  /* layer colors */
+  .layer-middleware { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+  .layer-middleware .layer-title { color: #1d4ed8; }
+  .layer-middleware .box { background: #dbeafe; color: #1e40af; }
+  .layer-routers { background: #eff6ff; border: 1.5px solid #93c5fd; }
+  .layer-routers .layer-title { color: #1d4ed8; }
+  .layer-routers .box { background: #3b82f6; color: #fff; }
+  .layer-deps { background: #f5f3ff; border: 1.5px solid #c4b5fd; }
+  .layer-deps .layer-title { color: #6d28d9; }
+  .layer-deps .box { background: #8b5cf6; color: #fff; }
+  .layer-services { background: #f0fdfa; border: 1.5px solid #99f6e4; }
+  .layer-services .layer-title { color: #0f766e; }
+  .layer-services .box { background: #14b8a6; color: #fff; }
+  .layer-data { background: #fff7ed; border: 1.5px solid #fed7aa; }
+  .layer-data .layer-title { color: #c2410c; }
+  .layer-data .box { background: #f97316; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="tooltip-box" id="tip"></div>
+
+<!-- ===== SECTION 1 HEADER ===== -->
+<div class="section-header">
+  <div class="section-header-inner">
+    <h1>Infra Manager — System Architecture</h1>
+    <span class="sub">Hover boxes for details · Click service to jump to internals</span>
+  </div>
+</div>
+
+<!-- ===== SECTION 1: System Overview ===== -->
+<div class="section" id="section-overview">
+<div class="overview-svg-wrap">
+<svg id="overviewSvg" width="1100" height="560" viewBox="0 0 1100 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L8,3.5 L0,7 Z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arr-sse" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L8,3.5 L0,7 Z" fill="#22c55e"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.12)"/>
+    </filter>
+  </defs>
+
+  <!-- ── ARROWS ── -->
+  <!-- Browser → Frontend -->
+  <line x1="205" y1="90" x2="295" y2="90" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="248" y="83" text-anchor="middle" class="arrow-label">HTTPS</text>
+
+  <!-- Desktop → Backend -->
+  <line x1="105" y1="115" x2="105" y2="310" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="105" y1="310" x2="488" y2="310" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="270" y="303" text-anchor="middle" class="arrow-label">REST API + SSE</text>
+
+  <!-- Desktop → Keycloak -->
+  <line x1="155" y1="78" x2="670" y2="78" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="670" y1="78" x2="670" y2="130" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <text x="430" y="70" text-anchor="middle" class="arrow-label">OIDC (localhost:17170)</text>
+
+  <!-- Frontend → Backend -->
+  <line x1="420" y1="140" x2="490" y2="260" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="468" y="200" class="arrow-label">REST API</text>
+
+  <!-- Frontend → Keycloak -->
+  <line x1="560" y1="100" x2="640" y2="140" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="620" y="118" class="arrow-label">OIDC+PKCE</text>
+
+  <!-- Backend → PostgreSQL -->
+  <line x1="560" y1="360" x2="560" y2="420" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="573" y="396" class="arrow-label">SQLAlchemy ORM</text>
+
+  <!-- Backend → Redis -->
+  <line x1="620" y1="340" x2="770" y2="420" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="718" y="387" class="arrow-label">Cache / Rate Limit</text>
+
+  <!-- Backend → Keycloak -->
+  <line x1="630" y1="300" x2="670" y2="230" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="678" y="270" class="arrow-label">JWKS / Admin API</text>
+
+  <!-- Backend → Frontend (SSE) -->
+  <line x1="490" y1="290" x2="420" y2="135" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arr-sse)"/>
+  <text x="428" y="230" class="arrow-label" fill="#16a34a">SSE (notifications)</text>
+
+  <!-- Keycloak → Keycloak DB -->
+  <line x1="720" y1="200" x2="840" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="840" y1="200" x2="840" y2="420" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="870" y="320" class="arrow-label">JDBC</text>
+
+  <!-- ── SERVICE BOXES ── -->
+
+  <!-- Browser / Desktop -->
+  <g class="node" id="svc-desktop" data-tip="Electron wrapper with offline SQLite sync, encrypted credential cache"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="20" y="40" width="135" height="90" rx="12" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="87" y="68" text-anchor="middle" class="node-title" fill="#374151">Browser /</text>
+    <text x="87" y="86" text-anchor="middle" class="node-title" fill="#374151">Desktop App</text>
+    <text x="87" y="106" text-anchor="middle" class="node-sub">Electron / Web</text>
+    <text x="87" y="120" text-anchor="middle" class="node-sub">ports 8181 / 17170</text>
+  </g>
+
+  <!-- Frontend -->
+  <g class="node" id="svc-frontend" data-tip="React 19 SPA with React Query, lazy-loaded routes, OIDC auth"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="300" y="50" width="175" height="90" rx="12" fill="#dcfce7" stroke="#86efac" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="387" y="78" text-anchor="middle" class="node-title" fill="#166534">Frontend</text>
+    <text x="387" y="96" text-anchor="middle" class="node-sub">React 19 / Vite</text>
+    <text x="387" y="112" text-anchor="middle" class="node-sub">TailwindCSS v4</text>
+    <text x="387" y="128" text-anchor="middle" class="node-sub">Nginx · port 8181</text>
+  </g>
+
+  <!-- Keycloak -->
+  <g class="node" id="svc-keycloak" data-tip="OIDC Identity Provider — handles login, MFA, token issuance"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="630" y="130" width="185" height="90" rx="12" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="722" y="158" text-anchor="middle" class="node-title" fill="#5b21b6">Keycloak</text>
+    <text x="722" y="176" text-anchor="middle" class="node-sub">OIDC + PKCE</text>
+    <text x="722" y="192" text-anchor="middle" class="node-sub">Keycloak 26</text>
+    <text x="722" y="208" text-anchor="middle" class="node-sub">port 9080</text>
+  </g>
+
+  <!-- Backend -->
+  <g class="node" id="svc-backend" data-tip="FastAPI with async workers, 14 routers, RBAC, encrypted credentials"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="488" y="260" width="185" height="95" rx="12" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="580" y="290" text-anchor="middle" class="node-title" fill="#1e40af">Backend</text>
+    <text x="580" y="308" text-anchor="middle" class="node-sub">FastAPI / SQLAlchemy</text>
+    <text x="580" y="324" text-anchor="middle" class="node-sub">Gunicorn / APScheduler</text>
+    <text x="580" y="340" text-anchor="middle" class="node-sub">port 8888</text>
+  </g>
+
+  <!-- PostgreSQL -->
+  <g class="node" id="svc-postgres" data-tip="Primary datastore — UUID PKs, Fernet-encrypted sensitive fields"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="470" y="420" width="185" height="85" rx="12" fill="#ffedd5" stroke="#fdba74" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="562" y="446" text-anchor="middle" class="node-title" fill="#9a3412">PostgreSQL</text>
+    <text x="562" y="464" text-anchor="middle" class="node-sub">UUID PKs</text>
+    <text x="562" y="480" text-anchor="middle" class="node-sub">Fernet Encryption</text>
+    <text x="562" y="496" text-anchor="middle" class="node-sub">uuid-ossp extension</text>
+  </g>
+
+  <!-- Redis -->
+  <g class="node" id="svc-redis" data-tip="Response caching (FastAPICache2) and rate limiting (slowapi)"
+     onclick="document.getElementById('backend-anchor').scrollIntoView({behavior:'smooth'})">
+    <rect x="745" y="420" width="165" height="85" rx="12" fill="#fee2e2" stroke="#fca5a5" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="827" y="446" text-anchor="middle" class="node-title" fill="#991b1b">Redis</text>
+    <text x="827" y="464" text-anchor="middle" class="node-sub">FastAPICache2</text>
+    <text x="827" y="480" text-anchor="middle" class="node-sub">slowapi rate limiting</text>
+    <text x="827" y="496" text-anchor="middle" class="node-sub">InMemory fallback</text>
+  </g>
+
+  <!-- Keycloak DB (separate PG instance) -->
+  <g class="node" id="svc-kc-db" data-tip="Separate PostgreSQL instance for Keycloak realm + user data">
+    <rect x="795" y="420" width="0" height="0" rx="0" fill="none"/>
+  </g>
+  <!-- KC DB box -->
+  <g class="node" data-tip="Separate PostgreSQL instance for Keycloak realm + user data">
+    <rect x="940" y="160" width="140" height="75" rx="10" fill="#fef9c3" stroke="#fde68a" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="1010" y="187" text-anchor="middle" class="node-title" fill="#854d0e">Keycloak DB</text>
+    <text x="1010" y="205" text-anchor="middle" class="node-sub">PostgreSQL</text>
+    <text x="1010" y="220" text-anchor="middle" class="node-sub">realm + user data</text>
+  </g>
+
+  <!-- Docker boundary -->
+  <rect x="270" y="22" width="830" height="510" rx="16" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="8,5"/>
+  <text x="282" y="16" font-size="11" fill="#94a3b8" font-weight="600">Docker Compose</text>
+</svg>
+</div>
+</div>
+
+<!-- ===== SECTION 2 HEADER ===== -->
+<div class="section-header" id="backend-anchor">
+  <div class="section-header-inner">
+    <h2>Backend Architecture (FastAPI)</h2>
+    <span class="sub">Layered request processing — top to bottom</span>
+  </div>
+</div>
+
+<!-- ===== SECTION 2: Backend Internals ===== -->
+<div class="backend-section">
+
+  <div class="layer layer-middleware">
+    <div class="layer-title">Layer 1 — Middleware</div>
+    <div class="boxes">
+      <div class="box" data-tip="Configurable allowed origins from ALLOWED_ORIGINS env var">CORS</div>
+      <div class="box" data-tip="CSP, Referrer-Policy, Permissions-Policy, X-Content-Type-Options">Security Headers (CSP)</div>
+      <div class="box" data-tip="Correlation via X-Request-ID header on every request">Request Logging (X-Request-ID)</div>
+      <div class="box" data-tip="slowapi — shared Limiter instance from app.rate_limit">Rate Limiting (slowapi)</div>
+      <div class="box" data-tip="POST dedup via X-Idempotency-Key header (desktop sync)">Idempotency</div>
+    </div>
+  </div>
+
+  <div class="layer layer-routers">
+    <div class="layer-title">Layer 2 — Routers (14 resource endpoints)</div>
+    <div class="boxes">
+      <div class="box" data-tip="OIDC config endpoint, user profile (GET /auth/me)">auth</div>
+      <div class="box" data-tip="Project CRUD with folder support, deployment notes">projects</div>
+      <div class="box" data-tip="Nested folder tree for organizing projects">project_folders</div>
+      <div class="box" data-tip="Server CRUD with credential protection, uptime monitoring">servers</div>
+      <div class="box" data-tip="Database engine CRUD with per-project credential overrides">databases</div>
+      <div class="box" data-tip="Project components with encrypted custom_fields (JSON)">components</div>
+      <div class="box" data-tip="User management — Keycloak-synced, superuser only">users</div>
+      <div class="box" data-tip="Group management for RBAC">groups</div>
+      <div class="box" data-tip="Webhook CRUD — Slack/Teams/Generic, project-scoped events">webhooks</div>
+      <div class="box" data-tip="Full/project export-import with passphrase encryption">backup</div>
+      <div class="box" data-tip="Platform settings key-value store">settings</div>
+      <div class="box" data-tip="SSE stream for real-time uptime alerts">notifications</div>
+      <div class="box" data-tip="Soft-deleted item recovery — restore or permanent delete">trash</div>
+      <div class="box" data-tip="Audit log viewer with filtering">audit</div>
+    </div>
+  </div>
+
+  <div class="layer layer-deps">
+    <div class="layer-title">Layer 3 — Dependencies / Auth (FastAPI DI)</div>
+    <div class="boxes">
+      <div class="box" data-tip="Validates Keycloak RS256 JWT via JWKS, maps to local User">get_current_user (JWKS validation)</div>
+      <div class="box" data-tip="RBAC factory — checks group + direct user access paths">require_project_role (RBAC factory)</div>
+      <div class="box" data-tip="Requires is_superuser=True, used for admin endpoints">get_current_active_superuser</div>
+    </div>
+  </div>
+
+  <div class="layer layer-services">
+    <div class="layer-title">Layer 4 — Services &amp; Background Jobs</div>
+    <div class="boxes">
+      <div class="box" data-tip="Fernet symmetric encryption on DB columns — transparent read/write">EncryptedString/JSON (Fernet)</div>
+      <div class="box" data-tip="APScheduler background jobs — TCP/HTTP uptime checks every 2 min">Monitor (APScheduler)</div>
+      <div class="box" data-tip="Sends event payloads to Slack, Teams, or generic HTTP endpoints">Webhook Dispatch</div>
+      <div class="box" data-tip="AES-256-GCM with PBKDF2 key derivation for backup file encryption">Backup Crypto (AES-256-GCM)</div>
+      <div class="box" data-tip="Records all mutations — user, action, resource_type, resource_name">Audit Logger</div>
+      <div class="box" data-tip="Per-user async queues, pushes uptime state changes to frontend">SSE NotificationBus</div>
+    </div>
+  </div>
+
+  <div class="layer layer-data">
+    <div class="layer-title">Layer 5 — Data</div>
+    <div class="boxes">
+      <div class="box" data-tip="16 tables — Users, Projects, Servers, Databases, Components, Webhooks, etc.">SQLAlchemy Models (16 tables)</div>
+      <div class="box" data-tip="Version-controlled migrations — datetime-prefixed naming convention">Alembic Migrations</div>
+      <div class="box" data-tip="is_deleted + deleted_at columns, 30-day purge by background job">Soft Delete Pattern</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const tip = document.getElementById('tip');
+
+  function showTip(e, text) {
+    tip.textContent = text;
+    tip.style.opacity = '1';
+    moveTip(e);
+  }
+
+  function moveTip(e) {
+    const x = e.clientX + 14;
+    const y = e.clientY - 10;
+    const maxX = window.innerWidth - 260;
+    tip.style.left = Math.min(x, maxX) + 'px';
+    tip.style.top = (y < 0 ? 4 : y) + 'px';
+  }
+
+  function hideTip() {
+    tip.style.opacity = '0';
+  }
+
+  // Attach to SVG nodes (Section 1)
+  document.querySelectorAll('.node[data-tip]').forEach(function (el) {
+    el.addEventListener('mouseenter', function (e) { showTip(e, el.getAttribute('data-tip')); });
+    el.addEventListener('mousemove', moveTip);
+    el.addEventListener('mouseleave', hideTip);
+  });
+
+  // Attach to backend boxes (Section 2)
+  document.querySelectorAll('.box[data-tip]').forEach(function (el) {
+    el.addEventListener('mouseenter', function (e) { showTip(e, el.getAttribute('data-tip')); });
+    el.addEventListener('mousemove', moveTip);
+    el.addEventListener('mouseleave', hideTip);
+  });
+})();
+</script>
+</body>
+</html>
