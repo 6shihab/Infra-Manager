@@ -443,3 +443,74 @@ class ImportResponse(BaseModel):
     skipped: int
     errors: int
     details: List[ImportDetailItem]
+
+# --- Webhook Schemas ---
+class WebhookTypeEnum(str, Enum):
+    slack = "slack"
+    teams = "teams"
+    generic = "generic"
+
+WEBHOOK_EVENT_TYPES = ["SERVER_OFFLINE", "SERVER_ONLINE", "PROJECT_OFFLINE", "PROJECT_ONLINE"]
+
+
+class WebhookProjectInfo(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class WebhookCreate(BaseModel):
+    name: str = Field(..., max_length=256)
+    url: str = Field(..., max_length=2048)
+    type: WebhookTypeEnum
+    events: List[str] = Field(..., min_length=1)
+    is_active: bool = True
+    secret: Optional[str] = Field(default=None, max_length=256)
+    project_ids: Optional[List[uuid.UUID]] = None
+
+    @field_validator("events")
+    @classmethod
+    def validate_events(cls, v: List[str]) -> List[str]:
+        for e in v:
+            if e not in WEBHOOK_EVENT_TYPES:
+                raise ValueError(f"Invalid event type: {e}. Must be one of {WEBHOOK_EVENT_TYPES}")
+        return v
+
+class WebhookUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=256)
+    url: Optional[str] = Field(default=None, max_length=2048)
+    type: Optional[WebhookTypeEnum] = None
+    events: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    secret: Optional[str] = Field(default=None, max_length=256)
+    project_ids: Optional[List[uuid.UUID]] = None
+
+    @field_validator("events")
+    @classmethod
+    def validate_events(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is not None:
+            for e in v:
+                if e not in WEBHOOK_EVENT_TYPES:
+                    raise ValueError(f"Invalid event type: {e}. Must be one of {WEBHOOK_EVENT_TYPES}")
+        return v
+
+class WebhookResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    url: str
+    type: WebhookTypeEnum
+    events: List[str]
+    is_active: bool
+    has_secret: bool = False
+    created_at: Optional[datetime] = None
+    last_triggered_at: Optional[datetime] = None
+    last_status_code: Optional[int] = None
+    last_error: Optional[str] = None
+    project_ids: List[uuid.UUID] = []
+    projects: List[WebhookProjectInfo] = []
+    class Config:
+        from_attributes = True
+
+class WebhookTestResponse(BaseModel):
+    success: bool
+    status_code: int
+    response_body: str

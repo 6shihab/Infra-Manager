@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut, Activity, Server, Database, Trash2 } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, KeySquare, Users as UsersIcon, Shield, LogOut, Activity, Server, Database, Trash2, Bell } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -99,6 +99,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         >
                             <Shield className={clsx('flex-shrink-0 h-5 w-5 mr-3 transition-colors duration-200', location.pathname.startsWith('/groups') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-300')} />
                             Groups
+                        </Link>
+                        <Link
+                            to="/webhooks"
+                            onClick={onClose}
+                            className={clsx(
+                                'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+                                location.pathname.startsWith('/webhooks')
+                                    ? 'bg-brand-500/10 text-brand-500'
+                                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
+                            )}
+                        >
+                            <Bell className={clsx('flex-shrink-0 h-5 w-5 mr-3 transition-colors duration-200', location.pathname.startsWith('/webhooks') ? 'text-brand-500' : 'text-gray-500 group-hover:text-gray-300')} />
+                            Webhooks
                         </Link>
                     </div>
                 )}

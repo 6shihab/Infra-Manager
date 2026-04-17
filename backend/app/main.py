@@ -15,7 +15,7 @@ from app import models
 from app.database import engine, get_db
 from app.config import settings
 from app.logging_config import setup_logging
-from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router, project_folders as project_folders_router, trash as trash_router, mfa as mfa_router, backup as backup_router
+from app.routers import projects, servers, databases, settings as settings_router, components, auth, users, groups, audit_router, notifications as notifications_router, project_folders as project_folders_router, trash as trash_router, mfa as mfa_router, backup as backup_router, webhooks as webhooks_router
 from app.monitor import start_scheduler
 from app.idempotency import IdempotencyMiddleware
 from fastapi_cache import FastAPICache
@@ -123,6 +123,7 @@ app.include_router(notifications_router.router)
 app.include_router(trash_router.router)
 app.include_router(mfa_router.router)
 app.include_router(backup_router.router)
+app.include_router(webhooks_router.router)
 
 
 @app.exception_handler(Exception)

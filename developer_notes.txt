@@ -8,3 +8,7 @@ you MUST also update the desktop SQLite schema to keep offline mode in sync:
   3. Update the corresponding repository in desktop/src/db/repositories/
   4. Update desktop/src/ipc/offlineApi.ts if new API endpoints are involved
 Skipping this will cause offline mode to miss the new data.
+
+always use superpower skills
+
+always test with playwrite mcp server

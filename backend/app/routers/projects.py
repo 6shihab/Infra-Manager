@@ -401,3 +401,93 @@ def remove_user_from_project(project_id: uuid.UUID, user_id: uuid.UUID, db: Sess
     log_audit(db, current_user.id, "REVOKED_ACCESS", "Project", project_name,
               target_user_ids=[user_id])
     return {"status": "success"}
+
+
+@router.get("/{project_id}/webhooks")
+@limiter.limit("20/minute")
+def read_project_webhooks(
+    request: Request,
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_superuser),
+):
+    project = db.query(models.Project).filter(
+        models.Project.id == project_id,
+        models.Project.is_deleted == False,
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    webhooks = (
+        db.query(models.Webhook)
+        .join(models.webhook_projects)
+        .filter(models.webhook_projects.c.project_id == project_id)
+        .all()
+    )
+    return [
+        {
+            "id": w.id,
+            "name": w.name,
+            "type": w.type.value if w.type else "generic",
+            "events": w.events or [],
+            "is_active": w.is_active,
+        }
+        for w in webhooks
+    ]
+
+
+@router.put("/{project_id}/webhooks")
+@limiter.limit("20/minute")
+def update_project_webhooks(
+    request: Request,
+    project_id: uuid.UUID,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_superuser),
+):
+    project = db.query(models.Project).filter(
+        models.Project.id == project_id,
+        models.Project.is_deleted == False,
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    webhook_ids = body.get("webhook_ids", [])
+
+    # Clear existing links for this project
+    db.execute(
+        models.webhook_projects.delete().where(
+            models.webhook_projects.c.project_id == project_id
+        )
+    )
+
+    # Add new links
+    for wid in webhook_ids:
+        webhook = db.query(models.Webhook).filter(models.Webhook.id == wid).first()
+        if webhook:
+            db.execute(
+                models.webhook_projects.insert().values(
+                    webhook_id=webhook.id, project_id=project_id
+                )
+            )
+
+    db.commit()
+    log_audit(db, current_user.id, "UPDATED", "Project", project.name)
+
+    # Return updated list
+    webhooks = (
+        db.query(models.Webhook)
+        .join(models.webhook_projects)
+        .filter(models.webhook_projects.c.project_id == project_id)
+        .all()
+    )
+    return [
+        {
+            "id": w.id,
+            "name": w.name,
+            "type": w.type.value if w.type else "generic",
+            "events": w.events or [],
+            "is_active": w.is_active,
+        }
+        for w in webhooks
+    ]

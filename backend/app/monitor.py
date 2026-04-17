@@ -165,6 +165,19 @@ async def run_uptime_checks():
             and not isinstance(result, Exception)
             and bool(result) is False
         ]
+        newly_online_servers = [
+            s for s, result in zip(servers, server_results)
+            if s.is_online is False
+            and not isinstance(result, Exception)
+            and bool(result) is True
+        ]
+        newly_online_projects = [
+            p for p, result in zip(projects, project_results)
+            if p.primary_domain
+            and p.is_online is False
+            and not isinstance(result, Exception)
+            and bool(result) is True
+        ]
 
         if server_rows:
             db.execute(sa_update(Server), server_rows)
@@ -212,6 +225,39 @@ async def run_uptime_checks():
                         })
             except Exception:
                 logger.exception("Failed to publish offline notifications")
+
+        # Dispatch webhook notifications for uptime state changes
+        if newly_offline_servers or newly_online_servers or newly_offline_projects or newly_online_projects:
+            try:
+                from app.webhook_dispatch import dispatch_webhooks_sync
+                for server in newly_offline_servers:
+                    server_project_ids = [
+                        str(r[0]) for r in db.execute(
+                            select(ProjectServer.project_id).where(ProjectServer.server_id == server.id)
+                        ).all()
+                    ]
+                    dispatch_webhooks_sync("SERVER_OFFLINE", "server", server.name,
+                                          {"id": str(server.id), "name": server.name, "ip_address": server.ip_address},
+                                          project_ids=server_project_ids)
+                for server in newly_online_servers:
+                    server_project_ids = [
+                        str(r[0]) for r in db.execute(
+                            select(ProjectServer.project_id).where(ProjectServer.server_id == server.id)
+                        ).all()
+                    ]
+                    dispatch_webhooks_sync("SERVER_ONLINE", "server", server.name,
+                                          {"id": str(server.id), "name": server.name, "ip_address": server.ip_address},
+                                          project_ids=server_project_ids)
+                for project in newly_offline_projects:
+                    dispatch_webhooks_sync("PROJECT_OFFLINE", "project", project.name,
+                                          {"id": str(project.id), "name": project.name, "primary_domain": project.primary_domain},
+                                          project_ids=[str(project.id)])
+                for project in newly_online_projects:
+                    dispatch_webhooks_sync("PROJECT_ONLINE", "project", project.name,
+                                          {"id": str(project.id), "name": project.name, "primary_domain": project.primary_domain},
+                                          project_ids=[str(project.id)])
+            except Exception:
+                logger.exception("Failed to dispatch webhook notifications")
 
         elapsed = (datetime.now(timezone.utc) - start).total_seconds()
         logger.info(

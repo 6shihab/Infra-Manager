@@ -87,6 +87,11 @@ class AccessLevelEnum(str, enum.Enum):
     EDITOR = "Editor"
     ADMIN = "Admin"
 
+class WebhookTypeEnum(str, enum.Enum):
+    slack = "slack"
+    teams = "teams"
+    generic = "generic"
+
 # --- RBAC Models ---
 
 user_group_link = Table(
@@ -94,6 +99,13 @@ user_group_link = Table(
     Base.metadata,
     Column('user_id', PgUUID(as_uuid=True), ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
     Column('group_id', PgUUID(as_uuid=True), ForeignKey('groups.id', ondelete="CASCADE"), primary_key=True)
+)
+
+webhook_projects = Table(
+    "webhook_projects",
+    Base.metadata,
+    Column("webhook_id", PgUUID(as_uuid=True), ForeignKey("webhooks.id", ondelete="CASCADE"), primary_key=True),
+    Column("project_id", PgUUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
 )
 
 class User(Base):
@@ -141,6 +153,25 @@ class ProjectUserAccess(Base):
 
     project = relationship("Project", back_populates="user_accesses")
     user = relationship("User")
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+
+    id = Column(PgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    name = Column(String(256), nullable=False)
+    url = Column(String(2048), nullable=False)
+    type = Column(Enum(WebhookTypeEnum), nullable=False)
+    events = Column(JSON, nullable=False)
+    is_active = Column(Boolean, default=True)
+    secret = Column(EncryptedString, nullable=True)
+    created_by = Column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_triggered_at = Column(DateTime(timezone=True), nullable=True)
+    last_status_code = Column(Integer, nullable=True)
+    last_error = Column(String(500), nullable=True)
+
+    creator = relationship("User", foreign_keys=[created_by])
+    projects = relationship("Project", secondary="webhook_projects")
 
 # --- Infrastructure Models ---
 

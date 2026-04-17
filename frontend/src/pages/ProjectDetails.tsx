@@ -14,6 +14,7 @@ import { ServerSection } from '../components/project/ServerSection';
 import { DatabaseSection } from '../components/project/DatabaseSection';
 import { ComponentSection } from '../components/project/ComponentSection';
 import { AccessControlSection } from '../components/project/AccessControlSection';
+import { WebhookSection } from '../components/project/WebhookSection';
 import { BackupExportModal } from '../components/BackupExportModal';
 import type { ApiError } from '../types/api';
 
@@ -251,6 +252,11 @@ export function ProjectDetails() {
                 canDelete={canDelete}
                 onDeleteComponent={handleDeleteComponent}
             />
+
+            {/* Webhooks section (Superuser only) */}
+            {user?.is_superuser && project && (
+                <WebhookSection projectId={project.id} />
+            )}
 
             {/* Access Control section (Superuser only) */}
             {user?.is_superuser && (

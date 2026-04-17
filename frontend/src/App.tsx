@@ -33,6 +33,8 @@ const Groups = React.lazy(() => import('./pages/Groups').then(module => ({ defau
 const AuditLogs = React.lazy(() => import('./pages/AuditLogs').then(module => ({ default: module.AuditLogs })));
 const Trash = React.lazy(() => import('./pages/Trash').then(module => ({ default: module.Trash })));
 const ServerConfig = React.lazy(() => import('./pages/ServerConfig').then(module => ({ default: module.ServerConfig })));
+const Webhooks = React.lazy(() => import('./pages/Webhooks').then(module => ({ default: module.Webhooks })));
+const WebhookForm = React.lazy(() => import('./pages/WebhookForm').then(module => ({ default: module.WebhookForm })));
 
 const Spinner = () => (
   <div className="flex h-screen items-center justify-center p-4">
@@ -60,6 +62,12 @@ function App() {
   const finalOidcConfig = {
     ...oidcConfig,
     userStore: new WebStorageStateStore({ store: window.localStorage }),
+    // Clean OIDC callback params (code, state, session_state, iss) from URL after
+    // successful auth. Without this, a page refresh re-sends the spent authorization
+    // code to Keycloak, which rejects it → infinite spinner.
+    onSigninCallback: () => {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    },
   };
 
   return (
@@ -99,6 +107,9 @@ function App() {
                 <Route path="groups" element={<Groups />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
                 <Route path="trash" element={<Trash />} />
+                <Route path="webhooks" element={<Webhooks />} />
+                <Route path="webhooks/new" element={<WebhookForm />} />
+                <Route path="webhooks/:id/edit" element={<WebhookForm />} />
                 <Route path="*" element={
                   <div className="flex flex-col items-center justify-center h-[60vh]">
                     <h2 className="text-2xl font-bold mb-2">404 - Page Not Found</h2>
